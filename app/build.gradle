@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// La página web (index.html y config.js) está en la raíz del repositorio.
+// Antes de compilar se copia dentro de la app: así se edita en un solo lugar.
+def carpetaWeb = file("$buildDir/web-assets")
+tasks.register('copiarPaginaWeb', Copy) {
+    from(rootProject.projectDir) {
+        include 'index.html', 'config.js', '*.png', '*.jpg', '*.svg', '*.css', 'img/**'
+    }
+    into carpetaWeb
+}
+preBuild.dependsOn 'copiarPaginaWeb'
+
+android {
+    namespace 'cl.maestro.presupuestos'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'cl.maestro.presupuestos'
+        minSdk 24
+        targetSdk 34
+        // En GitHub cada compilación sube el número de versión solo
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir carpetaWeb
+        }
+    }
+
+    // Firma fija: cada APK nuevo se instala encima del anterior sin desinstalar.
+    signingConfigs {
+        app {
+            storeFile file('clave-app.jks')
+            storePassword 'maestro2026'
+            keyAlias 'maestro'
+            keyPassword 'maestro2026'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.app
+        }
+        debug {
+            signingConfig signingConfigs.app
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Sirve la página desde https://appassets.androidplatform.net (guarda los presupuestos en el teléfono)
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

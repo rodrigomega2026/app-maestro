@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Maestro Presupuestos</title>
+<meta name="theme-color" content="#16181B">
+<style>
+:root{
+  --bg:#EEF0F2; --surface:#FFFFFF; --ink:#16181B; --muted:#5E6670; --line:#D9DDE2; --soft:#F5F6F8;
+  --yellow:#F5C400; --yellow-ink:#16181B; --dark:#16181B; --dark2:#26292E;
+  --ok:#1E7D4F; --ok-soft:#DDF1E6; --warn:#A35F00; --warn-soft:#FFF1D6; --bad:#B42318; --bad-soft:#FDECEA;
+  --shadow:0 6px 24px rgba(10,15,20,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+/* barra superior */
+.top{position:sticky;top:0;z-index:50;background:var(--dark);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.top h1{font-size:1.15rem;margin:0;font-weight:800;letter-spacing:.01em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top h1 small{display:block;font-size:.74rem;font-weight:400;color:#B9C0C8;letter-spacing:0}
+.top .ico{width:38px;height:38px;border-radius:10px;border:0;background:var(--dark2);color:#fff;display:grid;place-items:center;cursor:pointer;font-size:1.15rem;flex:0 0 38px}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--yellow);display:grid;place-items:center;flex:0 0 38px}
+.wrap{padding:14px;max-width:760px;margin:0 auto;display:grid;gap:12px;padding-bottom:110px}
+/* tarjetas */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h2{font-size:1rem;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.card h2 .n{width:24px;height:24px;border-radius:50%;background:var(--yellow);color:var(--yellow-ink);display:grid;place-items:center;font-size:.8rem}
+.lbl{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:.84rem}
+.field{display:grid;gap:4px;margin-bottom:10px}
+.field label{font-weight:700;font-size:.86rem}
+.inp{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.inp:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(245,196,0,.45)}
+textarea.inp{min-height:70px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+/* botones */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border-radius:11px;border:1px solid var(--line);background:var(--surface);font-weight:700;cursor:pointer;text-decoration:none;color:var(--ink);white-space:nowrap}
+.btn.y{background:var(--yellow);border-color:var(--yellow);color:var(--yellow-ink)}
+.btn.d{background:var(--dark);border-color:var(--dark);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.red{color:var(--bad);border-color:#F1C4BF}
+.btn.sm{padding:7px 11px;font-size:.84rem;border-radius:9px}
+.btn.full{width:100%}
+.btn:active{transform:scale(.98)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.end{justify-content:flex-end}
+.sp{flex:1}
+/* lista de presupuestos */
+.pres{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;cursor:pointer;text-align:left;width:100%}
+.pres b{font-size:1rem}
+.pres .tot{font-weight:800;text-align:right;font-size:1.02rem}
+.est{display:inline-block;font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 8px;margin-right:6px}
+.est.borrador{background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.est.enviado{background:var(--warn-soft);color:var(--warn)}
+.est.aceptado{background:var(--ok-soft);color:var(--ok)}
+.est.rechazado{background:var(--bad-soft);color:var(--bad)}
+.vacio{text-align:center;padding:28px 18px;border:1.5px dashed var(--line);border-radius:14px;color:var(--muted)}
+.vacio b{display:block;color:var(--ink);font-size:1.05rem;margin-bottom:4px}
+/* plantillas */
+.plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.plant{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;text-align:left;cursor:pointer;display:grid;gap:3px;align-content:start}
+.plant .e{font-size:1.5rem;line-height:1;height:30px;display:flex;align-items:center}
+.plant b{font-size:.92rem}
+.plant span{font-size:.76rem;color:var(--muted)}
+/* partidas del presupuesto */
+.item{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.item+.item{margin-top:8px}
+.item .cab{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px}
+.ic{width:36px;height:36px;border-radius:9px;background:var(--soft);display:grid;place-items:center;font-size:1.15rem;border:1px solid var(--line)}
+.item .nom{font-weight:700;line-height:1.25}
+.item .sub{font-size:.8rem;color:var(--muted)}
+.item .val{text-align:right;font-weight:800}
+.item .cant{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:0 12px 10px}
+.item .cant .inp{padding:8px 10px;text-align:right;font-weight:700;font-size:1.05rem}
+.item .det{border-top:1px solid var(--line);background:var(--soft);padding:10px 12px;display:grid;gap:8px}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px;gap:6px;align-items:center;font-size:.86rem}
+.mrow .inp{padding:6px 8px;text-align:right}
+.mrow.h{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase}
+.tog{border:0;background:none;color:var(--muted);font-weight:700;font-size:.8rem;cursor:pointer;padding:0}
+.badge{font-size:.68rem;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:999px;padding:1px 7px;margin-left:4px;vertical-align:1px}
+/* totales */
+.tot-grid{display:grid;gap:6px}
+.tl{display:flex;justify-content:space-between;gap:10px}
+.tl.big{font-size:1.3rem;font-weight:800;border-top:2px solid var(--ink);padding-top:8px;margin-top:4px}
+.seg{display:flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 6px;font-weight:700;font-size:.84rem;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.switch{display:flex;gap:10px;align-items:center;cursor:pointer}
+.switch input{width:20px;height:20px;accent-color:var(--ink)}
+/* barra inferior */
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center;box-shadow:0 -4px 18px rgba(0,0,0,.08)}
+.bottom .t{flex:1;min-width:0}
+.bottom .t b{display:block;font-size:1.2rem}
+.bottom .t span{font-size:.78rem;color:var(--muted)}
+/* hojas (modales) */
+.bg{position:fixed;inset:0;background:rgba(10,12,15,.5);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:640px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.sheet .sh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.sheet .sh h3{margin:0;font-size:1.1rem;flex:1}
+.sheet .sb{padding:14px 16px;overflow:auto;display:grid;gap:8px}
+.sheet .sf{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:8px}
+.cat{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-align:left;cursor:pointer;width:100%}
+.cat .p{font-size:.8rem;color:var(--muted);text-align:right;white-space:nowrap}
+.grp{margin:8px 2px 0}
+/* documento */
+.doc{background:#fff;color:#111;border-radius:14px;border:1px solid var(--line);padding:22px 20px;font-size:.9rem}
+.doc .dh{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #111;padding-bottom:12px;margin-bottom:12px}
+.doc .dh h2{margin:0;font-size:1.35rem}
+.doc .yb{display:inline-block;background:var(--yellow);padding:2px 8px;border-radius:4px;font-weight:800;font-size:.78rem;letter-spacing:.06em}
+.doc table{width:100%;border-collapse:collapse;margin:8px 0}
+.doc th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#555;border-bottom:1.5px solid #111;padding:6px 5px}
+.doc td{border-bottom:1px solid #ddd;padding:6px 5px;vertical-align:top}
+.doc td.r,.doc th.r{text-align:right;white-space:nowrap}
+.doc .sec{font-weight:800;margin:16px 0 4px;font-size:.95rem}
+.doc .totbox{margin-left:auto;max-width:330px;display:grid;gap:4px;margin-top:8px}
+.doc .firma{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px;font-size:.8rem;text-align:center}
+.doc .firma div{border-top:1px solid #111;padding-top:6px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));background:var(--dark);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;z-index:200;max-width:calc(100% - 32px);text-align:center}
+.aviso{background:var(--warn-soft);color:#6B4300;border-radius:10px;padding:10px 12px;font-size:.84rem}
+@media (max-width:420px){.two{grid-template-columns:1fr}.mrow{grid-template-columns:minmax(0,1fr) 80px 84px}}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff}
+  .top,.bottom,.noprint,.toast{display:none!important}
+  .wrap{padding:0;max-width:none}
+  .doc{border:0;padding:0;border-radius:0}
+  tr{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<header class="top" id="top"></header>
+<main class="wrap" id="app"></main>
+<div class="bottom" id="bottom" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   DATOS BASE
+   Mano de obra: tabla "Precios de mano de obra Chile 2026 – sin materiales".
+   Materiales: precios Sodimac.cl consultados el 14-10-2026 (marcados "Sodimac")
+   y el resto estimados (marcados "estimado"). Todo se puede editar en "Precios".
+   ===================================================================== */
+const MATERIALES = {
+  cemento:   {n:"Cemento saco 25 kg", u:"saco", p:4900, f:"Sodimac"},
+  arena:     {n:"Arena", u:"m³", p:28000, f:"estimado"},
+  gravilla:  {n:"Gravilla", u:"m³", p:30000, f:"estimado"},
+  fierro:    {n:"Fierro A63 (estriado)", u:"kg", p:1150, f:"Sodimac"},
+  alambre:   {n:"Alambre negro N°18", u:"kg", p:2500, f:"estimado"},
+  terciado:  {n:"Placa terciado moldaje 18 mm", u:"un", p:32000, f:"estimado"},
+  pino23:    {n:"Pino bruto 2x3\" x 3,2 m", u:"un", p:2300, f:"estimado"},
+  clavos:    {n:"Clavos corrientes", u:"kg", p:2200, f:"estimado"},
+  bloque:    {n:"Bloque hormigón 15x20x40", u:"un", p:950, f:"estimado"},
+  ladrillo:  {n:"Ladrillo fiscal 28,5x14x5", u:"un", p:240, f:"Sodimac"},
+  yeso:      {n:"Yeso saco 25 kg", u:"saco", p:5500, f:"estimado"},
+  latex:     {n:"Pintura látex interior (galón)", u:"gl", p:13000, f:"Sodimac"},
+  ceramica:  {n:"Cerámica piso 30x30 / 33x33", u:"m²", p:6500, f:"estimado"},
+  ceramuro:  {n:"Cerámica muro (revestimiento)", u:"m²", p:7500, f:"estimado"},
+  porcel:    {n:"Porcelanato 60x60", u:"m²", p:8000, f:"Sodimac"},
+  adhes:     {n:"Adhesivo cerámico saco 25 kg", u:"saco", p:5500, f:"estimado"},
+  adhesp:    {n:"Adhesivo porcelanato saco 25 kg", u:"saco", p:9500, f:"estimado"},
+  frague:    {n:"Fragüe", u:"kg", p:2200, f:"estimado"},
+  zinc:      {n:"Plancha zinc acanalado 0,35x851x3660", u:"un", p:9300, f:"Sodimac"},
+  clavotecho:{n:"Clavo / tornillo techo", u:"un", p:60, f:"estimado"},
+  fieltro:   {n:"Fieltro asfáltico (rollo 40 m²)", u:"rollo", p:20000, f:"estimado"},
+  costanera: {n:"Costanera pino 2x2\" x 3,2 m", u:"un", p:1500, f:"estimado"},
+  volcanita: {n:"Volcanita 10 mm 1,2x2,4", u:"un", p:6200, f:"Sodimac"},
+  montante:  {n:"Montante metalcon 60x38 x 3 m", u:"un", p:3800, f:"estimado"},
+  canal:     {n:"Canal metalcon 61x20 x 3 m", u:"un", p:3300, f:"estimado"},
+  tornillos: {n:"Tornillos volcanita (caja 100)", u:"caja", p:3500, f:"estimado"},
+  pasta:     {n:"Pasta de muro (tineta 6 kg)", u:"un", p:9000, f:"estimado"},
+  malla:     {n:"Malla acma C92 (2,6x5 m)", u:"un", p:32000, f:"estimado"},
+  polietil:  {n:"Polietileno 0,2 mm", u:"m²", p:600, f:"estimado"},
+  elec:      {n:"Materiales eléctricos (por m² de vivienda)", u:"m²", p:14000, f:"estimado"},
+  sanit:     {n:"Materiales sanitarios (por m² de vivienda)", u:"m²", p:16000, f:"estimado"},
+  silicona:  {n:"Silicona / sellos", u:"un", p:4500, f:"estimado"},
+  flexibles: {n:"Flexibles y llaves de paso", u:"un", p:8000, f:"estimado"},
+};
+// Unidades que se compran enteras (se redondean hacia arriba en la lista de compra)
+const ENTERAS = new Set(["saco","un","gl","caja","rollo"]);
+
+// Partidas. mo = [mínimo, máximo] mano de obra por unidad. rend = [mín, máx] unidades por día.
+// mats = [[material, cantidad por unidad de la partida]]. tabla = viene de la tabla Chile 2026.
+const PARTIDAS = [
+  {id:"hormigon", g:"Obra gruesa", e:"🏗️", n:"Hormigón armado (losa)", u:"m³", mo:[85000,110000], rend:[0.8,1.2], obs:"Incluye moldaje y fierro (mano de obra)", tabla:1,
+    mats:[["cemento",14],["arena",0.5],["gravilla",0.75],["fierro",90],["alambre",1]]},
+  {id:"moldaje", g:"Obra gruesa", e:"🪵", n:"Moldaje de losa (madera)", u:"m²", mo:[12000,18000], rend:[8,12], obs:"Madera con reutilización", tabla:1,
+    mats:[["terciado",0.11],["pino23",0.8],["clavos",0.15]]},
+  {id:"enfierr", g:"Obra gruesa", e:"🔩", n:"Enfierradura (fierro corrugado)", u:"kg", mo:[180,250], rend:[150,200], obs:"Corte, doblado y colocación", tabla:1,
+    mats:[["fierro",1.05],["alambre",0.02]]},
+  {id:"bloque", g:"Obra gruesa", e:"🧱", n:"Albañilería bloque 15 cm", u:"m²", mo:[14000,20000], rend:[6,9], obs:"", tabla:1,
+    mats:[["bloque",12.5],["cemento",0.3],["arena",0.02],["fierro",1.5]]},
+  {id:"ladrillo", g:"Obra gruesa", e:"🧱", n:"Albañilería ladrillo fiscal", u:"m²", mo:[16000,22000], rend:[5,8], obs:"", tabla:1,
+    mats:[["ladrillo",50],["cemento",0.55],["arena",0.04]]},
+  {id:"radier", g:"Obra gruesa", e:"⬛", n:"Pavimento hormigón (losa piso)", u:"m²", mo:[15000,22000], rend:[20,30], obs:"Espesor 10 cm", tabla:1,
+    mats:[["cemento",1.3],["arena",0.05],["gravilla",0.075],["malla",0.085],["polietil",1.1]]},
+  {id:"cubierta", g:"Obra gruesa", e:"🏠", n:"Cubierta zinc ondulado", u:"m²", mo:[9000,13000], rend:[15,20], obs:"", tabla:1,
+    mats:[["zinc",0.4],["clavotecho",6],["fieltro",0.028],["costanera",0.5]]},
+  {id:"tabique", g:"Terminaciones", e:"🚪", n:"Tabique volcanita (simple)", u:"m²", mo:[11000,16000], rend:[10,15], obs:"Estructura metalcon, volcanita ambas caras", tabla:1,
+    mats:[["volcanita",0.75],["montante",0.9],["canal",0.3],["tornillos",0.3],["pasta",0.05]]},
+  {id:"estuco", g:"Terminaciones", e:"🧰", n:"Estuco interior (yeso)", u:"m²", mo:[8000,12000], rend:[12,18], obs:"Dos manos", tabla:1,
+    mats:[["yeso",0.3]]},
+  {id:"pintura", g:"Terminaciones", e:"🎨", n:"Pintura interior látex", u:"m²", mo:[4500,7000], rend:[20,30], obs:"Dos manos", tabla:1,
+    mats:[["latex",0.055]]},
+  {id:"ceramico", g:"Terminaciones", e:"◻️", n:"Cerámico piso (30x30)", u:"m²", mo:[10000,15000], rend:[8,12], obs:"", tabla:1,
+    mats:[["ceramica",1.08],["adhes",0.25],["frague",0.3]]},
+  {id:"porcel", g:"Terminaciones", e:"⬜", n:"Porcelanato (60x60)", u:"m²", mo:[14000,20000], rend:[5,8], obs:"", tabla:1,
+    mats:[["porcel",1.06],["adhesp",0.3],["frague",0.2]]},
+  {id:"electrica", g:"Instalaciones", e:"⚡", n:"Instalación eléctrica (vivienda)", u:"m²", mo:[18000,28000], rend:null, obs:"Incluye canalización", tabla:1,
+    mats:[["elec",1]]},
+  {id:"sanitaria", g:"Instalaciones", e:"💧", n:"Instalación sanitaria (vivienda)", u:"m²", mo:[22000,35000], rend:null, obs:"Incluye colectores", tabla:1,
+    mats:[["sanit",1]]},
+  // Partidas agregadas para baños y cocinas (valores estimados: revísalos en "Precios")
+  {id:"ceramuro", g:"Baño y cocina", e:"🟦", n:"Revestimiento cerámico muro", u:"m²", mo:[12000,18000], rend:[6,10], obs:"", tabla:0,
+    mats:[["ceramuro",1.08],["adhes",0.28],["frague",0.3]]},
+  {id:"retiro", g:"Baño y cocina", e:"🔨", n:"Retiro de cerámica y escombros", u:"m²", mo:[4000,7000], rend:[10,15], obs:"No incluye retiro en camión", tabla:0, mats:[]},
+  {id:"wc", g:"Baño y cocina", e:"🚽", n:"Instalación de WC", u:"un", mo:[25000,40000], rend:[2,3], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["flexibles",1],["silicona",1]]},
+  {id:"lavamanos", g:"Baño y cocina", e:"🚰", n:"Instalación lavamanos / vanitorio", u:"un", mo:[20000,35000], rend:[2,3], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["flexibles",1],["silicona",1]]},
+  {id:"ducha", g:"Baño y cocina", e:"🚿", n:"Instalación ducha / receptáculo", u:"un", mo:[35000,60000], rend:[1,1.5], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["silicona",2]]},
+  {id:"griferia", g:"Baño y cocina", e:"🔧", n:"Instalación grifería", u:"un", mo:[10000,18000], rend:[4,6], obs:"", tabla:0,
+    mats:[["flexibles",1]]},
+];
+
+// Plantillas: preguntan medidas y arman las partidas
+const PLANTILLAS = [
+  {id:"bano", e:"🛁", n:"Remodelar baño", d:"Retiro, piso, muros y artefactos",
+    campos:[["largo","Largo del baño (m)",2],["ancho","Ancho del baño (m)",1.5],["alto","Alto del cerámico en muro (m)",2]],
+    arma:v=>{const piso=v.largo*v.ancho, muro=Math.max(0,2*(v.largo+v.ancho)*v.alto-1.6);
+      return [["retiro",piso+muro],["ceramico",piso],["ceramuro",muro],["wc",1],["lavamanos",1],["ducha",1],["griferia",2],["pintura",piso]]}},
+  {id:"piso", e:"⬜", n:"Cambiar piso", d:"Retiro y porcelanato",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
+    arma:v=>{const a=v.largo*v.ancho;return [["retiro",a],["porcel",a]]}},
+  {id:"pintar", e:"🎨", n:"Pintar pieza / casa", d:"Muros y cielo",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3],["alto","Alto (m)",2.4],["piezas","Cantidad de piezas iguales",1]],
+    arma:v=>{const muro=Math.max(0,2*(v.largo+v.ancho)*v.alto-3)*v.piezas, cielo=v.largo*v.ancho*v.piezas;return [["pintura",muro+cielo]]}},
+  {id:"pieza", e:"🏠", n:"Ampliación (pieza)", d:"Radier, muros, techo e instalaciones",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3],["alto","Alto de muros (m)",2.4]],
+    arma:v=>{const a=v.largo*v.ancho, muro=Math.max(0,2*(v.largo+v.ancho)*v.alto-3.5);
+      return [["radier",a],["bloque",muro],["estuco",muro],["pintura",muro+a],["cubierta",a*1.2],["electrica",a],["ceramico",a]]}},
+  {id:"techo", e:"🏚️", n:"Techo nuevo", d:"Cubierta de zinc",
+    campos:[["largo","Largo (m)",8],["ancho","Ancho (m)",6]],
+    arma:v=>[["cubierta",v.largo*v.ancho*1.15]]},
+  {id:"tabiques", e:"🚪", n:"Tabiques", d:"Dividir espacios con volcanita",
+    campos:[["largo","Largo total de tabique (m)",4],["alto","Alto (m)",2.4]],
+    arma:v=>{const m=v.largo*v.alto;return [["tabique",m],["pintura",m*2]]}},
+  {id:"radier", e:"⬛", n:"Radier / losa de piso", d:"Hormigón 10 cm",
+    campos:[["largo","Largo (m)",5],["ancho","Ancho (m)",4]],
+    arma:v=>[["radier",v.largo*v.ancho]]},
+];
+
+/* =====================================================================
+   ESTADO (guardado en el teléfono)
+   ===================================================================== */
+const K = "maestro-v1";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clp = n => "$" + Math.round(n || 0).toLocaleString("es-CL");
+const nf = (n, d=2) => (Math.round((+n || 0) * 10**d) / 10**d).toLocaleString("es-CL", {maximumFractionDigits:d});
+const hoy = () => new Date().toISOString().slice(0,10);
+const fecha = s => { const [a,m,d] = String(s||hoy()).split("-"); return `${d}-${m}-${a}`; };
+const leerNum = v => { const x = parseFloat(String(v).replace(/\./g,"").replace(",", ".")); return isFinite(x) ? x : 0; };
+const leerDec = v => { let t = String(v).trim().replace(/\s/g, "");
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");          // 1.234,5
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");        // 1.234 (miles)
+  const x = parseFloat(t); return isFinite(x) ? x : 0; };
+// número para escribir dentro de una casilla (sin separador de miles, coma decimal)
+const ni = (n, d=2) => (Math.round((+n || 0) * 10**d) / 10**d).toLocaleString("es-CL", {maximumFractionDigits:d, useGrouping:false});
+
+let S;
+function cargar() {
+  try { S = JSON.parse(localStorage.getItem(K) || "null"); } catch (e) { S = null; }
+  S = S || {};
+  S.datos = S.datos || {nombre:"", oficio:"Maestro constructor", tel:"", correo:"", rut:"", comuna:"", validez:15,
+    condiciones:"50% de anticipo al iniciar y 50% al terminar.\nPrecios no incluyen retiro de escombros en camión salvo que se indique."};
+  S.precios = S.precios || {mat:{}, mo:{}};
+  S.pres = S.pres || [];
+  S.contador = S.contador || 0;
+  S.nivel = S.nivel || "medio";
+}
+function guardar() { try { localStorage.setItem(K, JSON.stringify(S)); } catch (e) { toast("No se pudo guardar en el teléfono"); } }
+cargar();
+
+const mat = id => { const m = MATERIALES[id] || {n:id, u:"un", p:0, f:""}; const p = S.precios.mat[id]; return {...m, p: p != null ? p : m.p, editado: p != null}; };
+const part = id => { const b = PARTIDAS.find(x => x.id === id); if (!b) return null; const mo = S.precios.mo[id]; return {...b, mo: mo || b.mo, editado: !!mo}; };
+const moSegun = (rango, nivel) => nivel === "min" ? rango[0] : nivel === "max" ? rango[1] : Math.round((rango[0] + rango[1]) / 2 / 100) * 100;
+
+/* =====================================================================
+   CÁLCULOS
+   ===================================================================== */
+function nuevoItem(pid, cant) {
+  const p = part(pid);
+  return { pid, n:p.n, e:p.e, u:p.u, cant: Math.round(cant * 100) / 100, rango:[...p.mo], mo: moSegun(p.mo, S.nivel), moManual:false,
+    rend: p.rend ? [...p.rend] : null, obs:p.obs, conMat:true,
+    mats: p.mats.map(([id, q]) => { const m = mat(id); return {id, n:m.n, u:m.u, q, p:m.p}; }) };
+}
+function calcular(pr) {
+  let mo = 0, dias = 0;
+  const lista = new Map();
+  for (const it of pr.items) {
+    mo += it.cant * it.mo;
+    if (it.rend) dias += it.cant / ((it.rend[0] + it.rend[1]) / 2);
+    if (!it.conMat) continue;
+    for (const m of it.mats) {
+      const x = lista.get(m.id) || {id:m.id, n:m.n, u:m.u, p:m.p, q:0};
+      x.q += it.cant * m.q; x.p = m.p; lista.set(m.id, x);
+    }
+  }
+  const mats = [...lista.values()].filter(m => m.q > 0).map(m => {
+    const comprar = ENTERAS.has(m.u) ? Math.ceil(m.q - 1e-9) : Math.ceil(m.q * 100) / 100;
+    return {...m, comprar, total: comprar * m.p};
+  });
+  const matTot = mats.reduce((a, m) => a + m.total, 0);
+  const incl = pr.incluirMat !== false;
+  const base = mo + (incl ? matTot : 0);
+  const imprev = base * (pr.imprevistos || 0) / 100;
+  const desc = pr.descuento || 0;
+  return { mo, matTot, mats, imprev, desc, total: Math.max(0, base + imprev - desc), dias: Math.ceil(dias * 2) / 2, incl };
+}
+
+/* =====================================================================
+   NAVEGACIÓN
+   ===================================================================== */
+let vista = "inicio", actual = null, abiertos = new Set();
+function ir(v, id) {
+  vista = v;
+  if (id !== undefined) actual = id;
+  history.pushState({v, id: actual}, "");
+  pintar(); scrollTo(0, 0);
+}
+addEventListener("popstate", e => {
+  if (cerrarHoja()) { history.pushState({v:vista, id:actual}, ""); return; }
+  const st = e.state || {v:"inicio"};
+  vista = st.v; actual = st.id ?? null; pintar();
+});
+history.replaceState({v:"inicio"}, "");
+// Para el botón "atrás" de la app Android
+window.atras = () => { if (cerrarHoja()) return true; if (vista !== "inicio") { history.back(); return true; } return false; };
+
+let tt; function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
+const presActual = () => S.pres.find(p => p.id === actual);
+
+function pintar() {
+  $("#bottom").hidden = true;
+  ({inicio:vInicio, pres:vPres, doc:vDoc, precios:vPrecios, datos:vDatos}[vista] || vInicio)();
+}
+function barra(titulo, sub, volver, extra = "") {
+  $("#top").innerHTML = (volver
+      ? `<button class="ico" onclick="history.back()" aria-label="Volver">←</button>`
+      : `<span class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16181B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg></span>`)
+    + `<h1>${esc(titulo)}${sub ? `<small>${esc(sub)}</small>` : ""}</h1>` + extra;
+}
+
+/* ---------- INICIO ---------- */
+function vInicio() {
+  barra("Maestro Presupuestos", S.datos.nombre ? S.datos.nombre + " · " + S.datos.oficio : "Mano de obra y materiales · Chile 2026", false,
+    `<button class="ico" onclick="ir('precios')" aria-label="Precios" title="Precios">$</button><button class="ico" onclick="ir('datos')" aria-label="Mis datos" title="Mis datos">👤</button>`);
+  const lista = [...S.pres].sort((a, b) => (b.mod || 0) - (a.mod || 0));
+  const sinDatos = !S.datos.nombre;
+  $("#app").innerHTML = `
+    ${sinDatos ? `<div class="card" style="border-color:var(--yellow);background:#FFFBEA"><b>Primero, tus datos</b><p class="small muted" style="margin:4px 0 10px">Tu nombre y teléfono aparecerán en cada presupuesto que envíes.</p><button class="btn y" onclick="ir('datos')">Completar mis datos</button></div>` : ""}
+    <div class="card">
+      <h2>¿Qué trabajo vas a cotizar?</h2>
+      <div class="plants">
+        ${PLANTILLAS.map(p => `<button class="plant" onclick="pedirPlantilla('${p.id}')"><span class="e">${p.e}</span><b>${esc(p.n)}</b><span>${esc(p.d)}</span></button>`).join("")}
+        <button class="plant" onclick="crear([])"><span class="e">📝</span><b>En blanco</b><span>Elige las partidas tú</span></button>
+      </div>
+    </div>
+    <div class="row"><span class="lbl">Mis presupuestos (${lista.length})</span></div>
+    ${lista.length ? lista.map(p => { const c = calcular(p); return `
+      <button class="pres" onclick="ir('pres','${p.id}')">
+        <span><span class="est ${p.estado}">${estadoTxt(p.estado)}</span><span class="small muted">N° ${String(p.num).padStart(3,"0")} · ${fecha(p.fecha)}</span><br>
+          <b>${esc(p.titulo || "Presupuesto")}</b><br><span class="small muted">${esc(p.cliente.nombre || "Sin cliente")}${p.cliente.dir ? " · " + esc(p.cliente.dir) : ""}</span></span>
+        <span class="tot num">${clp(c.total)}<br><span class="small muted" style="font-weight:400">${p.items.length} partida${p.items.length === 1 ? "" : "s"}</span></span>
+      </button>`; }).join("")
+    : `<div class="vacio"><b>Aún no tienes presupuestos</b>Elige un trabajo arriba para hacer el primero.</div>`}
+    <p class="small muted" style="text-align:center">Precios de mano de obra: tabla referencial Chile 2026. Materiales: Sodimac (14-10-2026) y estimados. Revísalos en <a href="#" onclick="ir('precios');return false">Precios</a>.</p>`;
+}
+const estadoTxt = e => ({borrador:"Borrador", enviado:"Enviado", aceptado:"Aceptado", rechazado:"Rechazado"})[e] || "Borrador";
+
+function crear(items, titulo) {
+  S.contador++;
+  const p = {id: Date.now().toString(36), num: S.contador, fecha: hoy(), mod: Date.now(), titulo: titulo || "", estado:"borrador",
+    cliente:{nombre:"", tel:"", dir:""}, items, imprevistos:10, descuento:0, incluirMat:true, notas:""};
+  S.pres.push(p); guardar(); ir("pres", p.id);
+}
+
+/* ---------- PLANTILLAS ---------- */
+function pedirPlantilla(id) {
+  const pl = PLANTILLAS.find(x => x.id === id);
+  hoja(`${pl.e} ${pl.n}`, `
+    <p class="small muted" style="margin:0">Ingresa las medidas. Después puedes cambiar cualquier cantidad.</p>
+    ${pl.campos.map(([k, t, def]) => `<div class="field"><label for="pl_${k}">${esc(t)}</label><input class="inp" id="pl_${k}" inputmode="decimal" value="${ni(def)}"></div>`).join("")}`,
+    `<button class="btn" onclick="cerrarHoja()">Cancelar</button><span class="sp"></span><button class="btn y" id="plOk">Calcular</button>`);
+  $("#plOk").onclick = () => {
+    const v = {}; for (const [k] of pl.campos) v[k] = leerDec($("#pl_" + k).value);
+    const items = pl.arma(v).filter(([, c]) => c > 0).map(([pid, c]) => nuevoItem(pid, c));
+    cerrarHoja(); crear(items, pl.n);
+  };
+}
+
+/* ---------- PRESUPUESTO ---------- */
+function vPres() {
+  const p = presActual(); if (!p) return ir("inicio");
+  const c = calcular(p);
+  barra(p.titulo || "Presupuesto", `N° ${String(p.num).padStart(3,"0")} · ${estadoTxt(p.estado)}`, true,
+    `<button class="ico" onclick="opcionesPres()" aria-label="Opciones">⋮</button>`);
+  $("#app").innerHTML = `
+    <div class="card">
+      <h2><span class="n">1</span>Cliente y obra</h2>
+      <div class="field"><label for="f_tit">Trabajo</label><input class="inp" id="f_tit" value="${esc(p.titulo)}" placeholder="Ej: Remodelación baño principal"></div>
+      <div class="two">
+        <div class="field"><label for="f_cn">Cliente</label><input class="inp" id="f_cn" value="${esc(p.cliente.nombre)}" placeholder="Nombre"></div>
+        <div class="field"><label for="f_ct">Teléfono</label><input class="inp" id="f_ct" inputmode="tel" value="${esc(p.cliente.tel)}" placeholder="+56 9 …"></div>
+      </div>
+      <div class="field" style="margin:0"><label for="f_cd">Dirección</label><input class="inp" id="f_cd" value="${esc(p.cliente.dir)}" placeholder="Calle, número, comuna"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">2</span>Partidas <span class="sp"></span><button class="btn sm y" onclick="agregarPartida()">+ Agregar</button></h2>
+      <div class="row" style="margin-bottom:10px"><span class="small muted">Precio de mano de obra:</span>
+        <div class="seg" style="flex:1">${[["min","Mínimo"],["medio","Medio"],["max","Máximo"]].map(([k, t]) => `<button class="${S.nivel === k ? "on" : ""}" onclick="cambiarNivel('${k}')">${t}</button>`).join("")}</div></div>
+      <div id="items">${p.items.length ? p.items.map((it, i) => itemHtml(it, i)).join("") : `<div class="vacio"><b>Sin partidas</b>Toca "+ Agregar" para elegir trabajos.</div>`}</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">3</span>Totales</h2>
+      <label class="switch" style="margin-bottom:10px"><input type="checkbox" id="f_im" ${c.incl ? "checked" : ""}> Incluir materiales en el precio al cliente</label>
+      <div class="two">
+        <div class="field"><label for="f_ip">Imprevistos / gastos (%)</label><input class="inp" id="f_ip" inputmode="decimal" value="${ni(p.imprevistos)}"></div>
+        <div class="field"><label for="f_ds">Descuento ($)</label><input class="inp" id="f_ds" inputmode="numeric" value="${p.descuento ? Math.round(p.descuento).toLocaleString("es-CL") : ""}" placeholder="0"></div>
+      </div>
+      <div class="tot-grid num" id="totales">${totalesHtml(c)}</div>
+    </div>
+
+    <div class="card" id="listaMat">${listaHtml(c)}</div>
+
+    <div class="card">
+      <h2>Notas para el cliente</h2>
+      <textarea class="inp" id="f_no" placeholder="Ej: El cliente compra los artefactos. Trabajo de lunes a viernes.">${esc(p.notas)}</textarea>
+    </div>
+    <div class="row"><button class="btn red sm" onclick="borrarPres()">Eliminar presupuesto</button><span class="sp"></span><button class="btn sm" onclick="duplicarPres()">Duplicar</button></div>`;
+
+  const b = $("#bottom"); b.hidden = false;
+  b.innerHTML = `<div class="t"><b class="num" id="botTot">${clp(c.total)}</b><span id="botSub">${c.dias ? "≈ " + nf(c.dias, 1) + " días de trabajo" : "Total"}</span></div><button class="btn d" onclick="ir('doc')">Ver y enviar</button>`;
+
+  // guardar campos de texto
+  const enlaza = (id, fn) => $(id).addEventListener("input", e => { fn(e.target.value); p.mod = Date.now(); guardar(); });
+  enlaza("#f_tit", v => p.titulo = v); enlaza("#f_cn", v => p.cliente.nombre = v); enlaza("#f_ct", v => p.cliente.tel = v);
+  enlaza("#f_cd", v => p.cliente.dir = v); enlaza("#f_no", v => p.notas = v);
+  enlaza("#f_ip", v => { p.imprevistos = leerDec(v); refrescar(); });
+  enlaza("#f_ds", v => { p.descuento = leerNum(v); refrescar(); });
+  $("#f_im").onchange = e => { p.incluirMat = e.target.checked; guardar(); vPres(); };
+  enlazarItems(p);
+}
+function totalesHtml(c) {
+  return `<div class="tl"><span>Mano de obra</span><span>${clp(c.mo)}</span></div>
+    <div class="tl ${c.incl ? "" : "muted"}"><span>Materiales${c.incl ? "" : " (no incluidos)"}</span><span>${clp(c.matTot)}</span></div>
+    ${c.imprev ? `<div class="tl"><span>Imprevistos</span><span>${clp(c.imprev)}</span></div>` : ""}
+    ${c.desc ? `<div class="tl"><span>Descuento</span><span>− ${clp(c.desc)}</span></div>` : ""}
+    <div class="tl big"><span>Total</span><span>${clp(c.total)}</span></div>
+    ${c.dias ? `<div class="tl small muted"><span>Plazo estimado</span><span>≈ ${nf(c.dias, 1)} días hábiles</span></div>` : ""}`;
+}
+function listaHtml(c) {
+  return `<h2>🛒 Lista de materiales</h2>` + (c.mats.length ? `<div class="mrow h"><span>Material</span><span style="text-align:right">Comprar</span><span style="text-align:right">Total</span></div>
+    ${c.mats.map(m => `<div class="mrow"><span>${esc(m.n)}<br><span class="muted small">${clp(m.p)} / ${esc(m.u)}</span></span><span style="text-align:right" class="num"><b>${nf(m.comprar)}</b> ${esc(m.u)}</span><span style="text-align:right" class="num">${clp(m.total)}</span></div>`).join("")}
+    <div class="tl" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px"><b>Total materiales</b><b class="num">${clp(c.matTot)}</b></div>
+    <p class="small muted" style="margin:6px 0 0">Cantidades con pérdida incluida; sacos, planchas y unidades redondeados hacia arriba. Verifica en terreno.</p>`
+    : `<p class="muted small" style="margin:0">Las partidas elegidas no llevan materiales.</p>`);
+}
+function refrescar() {
+  const p = presActual(); const c = calcular(p);
+  $("#totales").innerHTML = totalesHtml(c);
+  $("#listaMat").innerHTML = listaHtml(c);
+  $("#botTot").textContent = clp(c.total);
+  $("#botSub").textContent = c.dias ? "≈ " + nf(c.dias, 1) + " días de trabajo" : "Total";
+  p.items.forEach((it, i) => { const el = document.querySelector(`[data-tot="${i}"]`); if (el) el.innerHTML = itemTotHtml(it); });
+}
+const itemTot = it => it.cant * it.mo + (it.conMat ? it.mats.reduce((a, m) => a + it.cant * m.q * m.p, 0) : 0);
+const itemTotHtml = it => `${clp(itemTot(it))}<br><span class="small muted" style="font-weight:400">MO ${clp(it.cant * it.mo)}</span>`;
+function itemHtml(it, i) {
+  const abierto = abiertos.has(i);
+  const fuera = it.mo < it.rango[0] || it.mo > it.rango[1];
+  return `<div class="item">
+    <div class="cab"><span class="ic">${it.e}</span>
+      <span><span class="nom">${esc(it.n)}</span><br><span class="sub">${clp(it.mo)} / ${esc(it.u)} mano de obra${it.obs ? " · " + esc(it.obs) : ""}</span></span>
+      <span class="val num" data-tot="${i}">${itemTotHtml(it)}</span></div>
+    <div class="cant"><span class="small muted">Cantidad</span><input class="inp num" data-cant="${i}" inputmode="decimal" value="${ni(it.cant)}"><span class="small"><b>${esc(it.u)}</b></span>
+      <button class="tog" data-abrir="${i}">${abierto ? "Ocultar ▴" : "Detalle ▾"}</button></div>
+    ${abierto ? `<div class="det">
+      <div class="two">
+        <div class="field" style="margin:0"><label>Mano de obra por ${esc(it.u)}</label><input class="inp num" data-mo="${i}" inputmode="numeric" value="${Math.round(it.mo).toLocaleString("es-CL")}">
+          <span class="small ${fuera ? "" : "muted"}" style="${fuera ? "color:var(--warn)" : ""}">Referencia: ${clp(it.rango[0])} – ${clp(it.rango[1])}</span></div>
+        <div class="field" style="margin:0"><label>Rendimiento</label><div class="inp muted" style="background:var(--soft)">${it.rend ? nf(it.rend[0], 1) + " – " + nf(it.rend[1], 1) + " " + esc(it.u) + "/día" : "Variable"}</div></div>
+      </div>
+      ${it.mats.length ? `<label class="switch small"><input type="checkbox" data-conmat="${i}" ${it.conMat ? "checked" : ""}> Incluir materiales de esta partida</label>
+        ${it.conMat ? `<div class="mrow h"><span>Material (por ${esc(it.u)})</span><span style="text-align:right">Cantidad</span><span style="text-align:right">Precio</span></div>
+        ${it.mats.map((m, j) => `<div class="mrow"><span>${esc(m.n)}<br><span class="muted small">Total: ${nf(it.cant * m.q)} ${esc(m.u)}</span></span>
+          <input class="inp num" data-mq="${i}:${j}" inputmode="decimal" value="${ni(m.q, 3)}"><input class="inp num" data-mp="${i}:${j}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`).join("")}` : ""}` : `<span class="small muted">Esta partida no lleva materiales.</span>`}
+      <div class="row end"><button class="btn sm red" data-quitar="${i}">Quitar partida</button></div>
+    </div>` : ""}
+  </div>`;
+}
+function enlazarItems(p) {
+  const guarda = () => { p.mod = Date.now(); guardar(); refrescar(); };
+  document.querySelectorAll("[data-cant]").forEach(el => el.oninput = () => { p.items[+el.dataset.cant].cant = leerDec(el.value); guarda(); });
+  document.querySelectorAll("[data-mo]").forEach(el => el.oninput = () => { const it = p.items[+el.dataset.mo]; it.mo = leerNum(el.value); it.moManual = true; guarda(); });
+  document.querySelectorAll("[data-mq]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mq.split(":").map(Number); p.items[i].mats[j].q = leerDec(el.value); guarda(); });
+  document.querySelectorAll("[data-mp]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mp.split(":").map(Number); p.items[i].mats[j].p = leerNum(el.value); guarda(); });
+  document.querySelectorAll("[data-conmat]").forEach(el => el.onchange = () => { p.items[+el.dataset.conmat].conMat = el.checked; guardar(); vPres(); });
+  document.querySelectorAll("[data-abrir]").forEach(el => el.onclick = () => { const i = +el.dataset.abrir; abiertos.has(i) ? abiertos.delete(i) : abiertos.add(i); vPres(); });
+  document.querySelectorAll("[data-quitar]").forEach(el => el.onclick = () => {
+    if (!confirm("¿Quitar esta partida del presupuesto?")) return;
+    p.items.splice(+el.dataset.quitar, 1); abiertos.clear(); p.mod = Date.now(); guardar(); vPres(); });
+  // al salir de un campo numérico se ordena el formato
+  document.querySelectorAll("[data-cant],[data-mo],[data-mq],[data-mp]").forEach(el => el.onblur = () => setTimeout(() => {
+    const a = document.activeElement; if (vista === "pres" && !(a && a.matches("input,textarea,select"))) vPres(); }, 0));
+}
+function cambiarNivel(n) {
+  S.nivel = n; const p = presActual();
+  p.items.forEach(it => { if (!it.moManual) it.mo = moSegun(it.rango, n); });
+  p.mod = Date.now(); guardar(); vPres();
+}
+function agregarPartida() {
+  const grupos = [...new Set(PARTIDAS.map(x => x.g))];
+  hoja("Agregar partida", `
+    <input class="inp" id="bus" placeholder="Buscar (ej: pintura, baño, zinc)" autocomplete="off">
+    <div id="catl">${grupos.map(g => `<div class="lbl grp" data-g="${esc(g)}">${esc(g)}</div>` + PARTIDAS.filter(x => x.g === g).map(x => { const pp = part(x.id); return `
+      <button class="cat" data-pid="${x.id}" data-txt="${esc((x.n + " " + x.g + " " + x.obs).toLowerCase())}"><span class="ic">${x.e}</span>
+        <span><b>${esc(x.n)}</b>${x.tabla ? "" : `<span class="badge">estimado</span>`}<br><span class="small muted">${esc(x.obs || "por " + x.u)}</span></span>
+        <span class="p num">${clp(pp.mo[0])} – ${clp(pp.mo[1])}<br>por ${esc(x.u)}</span></button>`; }).join("")).join("")}</div>`,
+    `<button class="btn full" onclick="cerrarHoja()">Cerrar</button>`);
+  $("#bus").oninput = e => { const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#catl .cat").forEach(b => b.hidden = q && !b.dataset.txt.includes(q));
+    document.querySelectorAll("#catl .grp").forEach(g => { let s = g.nextElementSibling, ver = false; while (s && s.classList.contains("cat")) { if (!s.hidden) ver = true; s = s.nextElementSibling; } g.hidden = !ver; }); };
+  document.querySelectorAll("#catl .cat").forEach(b => b.onclick = () => pedirCantidad(b.dataset.pid));
+}
+function pedirCantidad(pid) {
+  const x = part(pid);
+  const area = ["m²"].includes(x.u), vol = x.u === "m³";
+  hoja(`${x.e} ${x.n}`, `
+    <div class="field"><label for="q">Cantidad (${esc(x.u)})</label><input class="inp num" id="q" inputmode="decimal" placeholder="0" style="font-size:1.3rem;font-weight:800"></div>
+    ${area || vol ? `<div class="lbl">o calcula con medidas</div>
+      <div class="${vol ? "three" : "two"}"><div class="field"><label for="m1">Largo (m)</label><input class="inp" id="m1" inputmode="decimal"></div>
+        <div class="field"><label for="m2">${area ? "Ancho o alto (m)" : "Ancho (m)"}</label><input class="inp" id="m2" inputmode="decimal"></div>
+        ${vol ? `<div class="field"><label for="m3">Espesor (m)</label><input class="inp" id="m3" inputmode="decimal" placeholder="0,12"></div>` : ""}</div>` : ""}
+    <p class="small muted" style="margin:0">Mano de obra referencial: ${clp(x.mo[0])} – ${clp(x.mo[1])} por ${esc(x.u)}${x.rend ? ` · rinde ${nf(x.rend[0], 1)}–${nf(x.rend[1], 1)} ${esc(x.u)}/día` : ""}.</p>`,
+    `<button class="btn" onclick="agregarPartida()">← Volver</button><span class="sp"></span><button class="btn y" id="qOk">Agregar</button>`);
+  const calc = () => { const a = leerDec($("#m1")?.value), b = leerDec($("#m2")?.value), c = vol ? leerDec($("#m3")?.value) : 1;
+    if (a && b && c) $("#q").value = nf(a * b * c); };
+  ["#m1","#m2","#m3"].forEach(s => { const el = $(s); if (el) el.oninput = calc; });
+  setTimeout(() => $("#q").focus(), 50);
+  $("#qOk").onclick = () => { const q = leerDec($("#q").value);
+    if (!(q > 0)) { $("#q").focus(); toast("Escribe la cantidad"); return; }
+    const p = presActual(); p.items.push(nuevoItem(pid, q)); p.mod = Date.now(); guardar(); cerrarHoja(); vPres(); toast("Partida agregada"); };
+}
+function opcionesPres() {
+  const p = presActual();
+  hoja("Estado del presupuesto", `
+    <p class="small muted" style="margin:0">Marca en qué quedó con el cliente.</p>
+    ${["borrador","enviado","aceptado","rechazado"].map(e => `<button class="cat" style="grid-template-columns:minmax(0,1fr) auto" onclick="marcar('${e}')"><span><span class="est ${e}">${estadoTxt(e)}</span></span><span>${p.estado === e ? "✓" : ""}</span></button>`).join("")}`,
+    `<button class="btn full" onclick="cerrarHoja()">Cerrar</button>`);
+}
+function marcar(e) { const p = presActual(); p.estado = e; p.mod = Date.now(); guardar(); cerrarHoja(); pintar(); toast("Marcado como " + estadoTxt(e).toLowerCase()); }
+function borrarPres() {
+  if (!confirm("¿Eliminar este presupuesto? No se puede deshacer.")) return;
+  S.pres = S.pres.filter(p => p.id !== actual); guardar(); history.back(); toast("Presupuesto eliminado");
+}
+function duplicarPres() {
+  const o = presActual(); S.contador++;
+  const c = JSON.parse(JSON.stringify(o)); c.id = Date.now().toString(36); c.num = S.contador; c.fecha = hoy(); c.mod = Date.now(); c.estado = "borrador"; c.titulo = (o.titulo || "Presupuesto") + " (copia)";
+  S.pres.push(c); guardar(); ir("pres", c.id); toast("Presupuesto duplicado");
+}
+
+/* ---------- DOCUMENTO PARA EL CLIENTE ---------- */
+function vDoc() {
+  const p = presActual(); if (!p) return ir("inicio");
+  const c = calcular(p), d = S.datos;
+  const venc = new Date(p.fecha + "T12:00:00"); venc.setDate(venc.getDate() + (+d.validez || 15));
+  barra("Vista del presupuesto", "Así lo verá tu cliente", true);
+  $("#app").innerHTML = `
+    <div class="row noprint"><button class="btn ok" style="flex:1" onclick="enviarWhatsApp()">💬 WhatsApp</button><button class="btn d" style="flex:1" onclick="imprimir()">📄 PDF / Imprimir</button></div>
+    <div class="row noprint"><button class="btn sm" style="flex:1" onclick="compartirTexto()">Compartir texto…</button><button class="btn sm" style="flex:1" onclick="compartirLista()">Enviar lista de materiales</button></div>
+    <article class="doc">
+      <div class="dh">
+        <div><span class="yb">PRESUPUESTO</span><h2>${esc(d.nombre || "Tu nombre")}</h2>
+          <div>${esc(d.oficio || "")}</div>
+          <div class="small">${[d.tel && "Tel: " + esc(d.tel), d.correo && esc(d.correo), d.rut && "RUT " + esc(d.rut), d.comuna && esc(d.comuna)].filter(Boolean).join(" · ")}</div></div>
+        <div style="text-align:right"><b>N° ${String(p.num).padStart(3,"0")}</b><br><span class="small">Fecha: ${fecha(p.fecha)}<br>Válido hasta: ${fecha(venc.toISOString().slice(0,10))}</span></div>
+      </div>
+      <div><b>Cliente:</b> ${esc(p.cliente.nombre || "—")}${p.cliente.tel ? " · " + esc(p.cliente.tel) : ""}<br>
+        ${p.cliente.dir ? `<b>Dirección:</b> ${esc(p.cliente.dir)}<br>` : ""}<b>Trabajo:</b> ${esc(p.titulo || "—")}</div>
+      <div class="sec">Mano de obra</div>
+      <table><thead><tr><th>Partida</th><th class="r">Cant.</th><th class="r">Valor unit.</th><th class="r">Total</th></tr></thead>
+        <tbody>${p.items.map(it => `<tr><td>${esc(it.n)}</td><td class="r">${nf(it.cant)} ${esc(it.u)}</td><td class="r">${clp(it.mo)}</td><td class="r">${clp(it.mo * it.cant)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td colspan="3"><b>Total mano de obra</b></td><td class="r"><b>${clp(c.mo)}</b></td></tr></tfoot></table>
+      ${c.mats.length ? `<div class="sec">Materiales ${c.incl ? "(incluidos en el precio)" : "(por cuenta del cliente)"}</div>
+        <table><thead><tr><th>Material</th><th class="r">Cantidad</th><th class="r">Valor ref.</th></tr></thead>
+        <tbody>${c.mats.map(m => `<tr><td>${esc(m.n)}</td><td class="r">${nf(m.comprar)} ${esc(m.u)}</td><td class="r">${clp(m.total)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td colspan="2"><b>Total materiales</b></td><td class="r"><b>${clp(c.matTot)}</b></td></tr></tfoot></table>` : ""}
+      <div class="totbox num">
+        <div class="tl"><span>Mano de obra</span><span>${clp(c.mo)}</span></div>
+        ${c.incl ? `<div class="tl"><span>Materiales</span><span>${clp(c.matTot)}</span></div>` : ""}
+        ${c.imprev ? `<div class="tl"><span>Imprevistos y gastos generales</span><span>${clp(c.imprev)}</span></div>` : ""}
+        ${c.desc ? `<div class="tl"><span>Descuento</span><span>− ${clp(c.desc)}</span></div>` : ""}
+        <div class="tl big"><span>TOTAL</span><span>${clp(c.total)}</span></div>
+      </div>
+      ${c.dias ? `<p><b>Plazo estimado:</b> ${nf(c.dias, 1)} días hábiles de trabajo.</p>` : ""}
+      ${p.notas ? `<div class="sec">Notas</div><div style="white-space:pre-line">${esc(p.notas)}</div>` : ""}
+      ${d.condiciones ? `<div class="sec">Condiciones</div><div style="white-space:pre-line">${esc(d.condiciones)}</div>` : ""}
+      <div class="firma"><div>${esc(d.nombre || "Maestro")}</div><div>Acepto: ${esc(p.cliente.nombre || "Cliente")}</div></div>
+    </article>`;
+}
+function textoPresupuesto(p) {
+  const c = calcular(p), d = S.datos;
+  const l = [];
+  l.push(`*PRESUPUESTO N° ${String(p.num).padStart(3,"0")}*`);
+  l.push(`${d.nombre || ""}${d.oficio ? " – " + d.oficio : ""}${d.tel ? " – " + d.tel : ""}`);
+  l.push(`Fecha: ${fecha(p.fecha)}`);
+  if (p.cliente.nombre) l.push(`Cliente: ${p.cliente.nombre}`);
+  if (p.titulo) l.push(`Trabajo: ${p.titulo}`);
+  l.push("");
+  l.push("_Mano de obra:_");
+  for (const it of p.items) l.push(`• ${it.n}: ${nf(it.cant)} ${it.u} → ${clp(it.mo * it.cant)}`);
+  l.push("");
+  l.push(`Mano de obra: ${clp(c.mo)}`);
+  if (c.incl && c.mats.length) l.push(`Materiales: ${clp(c.matTot)}`);
+  if (c.imprev) l.push(`Imprevistos: ${clp(c.imprev)}`);
+  if (c.desc) l.push(`Descuento: −${clp(c.desc)}`);
+  l.push(`*TOTAL: ${clp(c.total)}*`);
+  if (!c.incl) l.push("(Materiales por cuenta del cliente)");
+  if (c.dias) l.push(`Plazo estimado: ${nf(c.dias, 1)} días hábiles`);
+  if (p.notas) { l.push(""); l.push(p.notas); }
+  if (d.condiciones) { l.push(""); l.push(d.condiciones); }
+  return l.join("\n");
+}
+function textoLista(p) {
+  const c = calcular(p);
+  return [`*Lista de materiales – ${p.titulo || "Presupuesto N° " + p.num}*`, "",
+    ...c.mats.map(m => `• ${m.n}: ${nf(m.comprar)} ${m.u}`), "", `Valor referencial: ${clp(c.matTot)}`].join("\n");
+}
+function compartir(texto) {
+  if (window.Android && Android.compartir) { Android.compartir(texto); return; }
+  if (navigator.share) { navigator.share({text: texto}).catch(() => {}); return; }
+  navigator.clipboard?.writeText(texto).then(() => toast("Texto copiado"), () => {});
+}
+function enviarWhatsApp() {
+  const p = presActual(), t = textoPresupuesto(p);
+  const num = (p.cliente.tel || "").replace(/[^\d]/g, "");
+  const tel = num.length === 9 && num[0] === "9" ? "56" + num : num;
+  const url = "https://wa.me/" + (tel.length >= 10 ? tel : "") + "?text=" + encodeURIComponent(t);
+  if (p.estado === "borrador") { p.estado = "enviado"; p.mod = Date.now(); guardar(); }
+  if (window.Android && Android.abrir) Android.abrir(url); else window.open(url, "_blank");
+}
+const compartirTexto = () => compartir(textoPresupuesto(presActual()));
+const compartirLista = () => { const p = presActual(); if (!calcular(p).mats.length) return toast("Este presupuesto no tiene materiales"); compartir(textoLista(p)); };
+function imprimir() {
+  const p = presActual();
+  const nombre = `Presupuesto ${String(p.num).padStart(3,"0")} ${p.cliente.nombre || ""}`.trim();
+  if (window.Android && Android.imprimir) Android.imprimir(nombre); else window.print();
+}
+
+/* ---------- PRECIOS ---------- */
+function vPrecios() {
+  barra("Precios", "Cámbialos según tu zona y proveedor", true);
+  const g = [...new Set(PARTIDAS.map(x => x.g))];
+  $("#app").innerHTML = `
+    <div class="aviso">Los cambios se usan en los <b>presupuestos nuevos</b> y en las partidas que agregues. Los presupuestos ya hechos no cambian.</div>
+    <div class="card"><h2>Mano de obra (mínimo – máximo)</h2>
+      ${g.map(gr => `<div class="lbl grp">${esc(gr)}</div>` + PARTIDAS.filter(x => x.g === gr).map(x => { const pp = part(x.id); return `
+        <div class="mrow" style="margin-top:6px"><span>${x.e} ${esc(x.n)} <span class="muted small">/ ${esc(x.u)}</span>${x.tabla ? "" : `<span class="badge">estimado</span>`}${pp.editado ? `<span class="badge" style="color:var(--ok);background:var(--ok-soft)">editado</span>` : ""}</span>
+          <input class="inp num" data-mo0="${x.id}" inputmode="numeric" value="${pp.mo[0].toLocaleString("es-CL")}"><input class="inp num" data-mo1="${x.id}" inputmode="numeric" value="${pp.mo[1].toLocaleString("es-CL")}"></div>`; }).join("")).join("")}
+    </div>
+    <div class="card"><h2>Materiales</h2>
+      ${Object.keys(MATERIALES).map(id => { const m = mat(id); return `
+        <div class="mrow" style="grid-template-columns:minmax(0,1fr) 110px;margin-top:6px"><span>${esc(m.n)} <span class="muted small">/ ${esc(m.u)}</span>
+          <span class="badge" style="${m.f === "Sodimac" ? "color:var(--ok);background:var(--ok-soft)" : ""}">${m.editado ? "editado" : esc(m.f)}</span></span>
+          <input class="inp num" data-mat="${id}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`; }).join("")}
+      <p class="small muted">"Sodimac": precio consultado en sodimac.cl el 14-10-2026. "estimado": valor aproximado, conviene revisarlo.</p>
+    </div>
+    <button class="btn red" onclick="restaurarPrecios()">Restaurar valores originales</button>`;
+  const g2 = () => guardar();
+  document.querySelectorAll("[data-mo0],[data-mo1]").forEach(el => el.onchange = () => {
+    const id = el.dataset.mo0 || el.dataset.mo1, pp = part(id);
+    const r = [...pp.mo]; r[el.dataset.mo0 ? 0 : 1] = leerNum(el.value);
+    if (r[0] > r[1]) r.reverse(); S.precios.mo[id] = r; g2(); vPrecios(); toast("Precio guardado"); });
+  document.querySelectorAll("[data-mat]").forEach(el => el.onchange = () => { S.precios.mat[el.dataset.mat] = leerNum(el.value); g2(); vPrecios(); toast("Precio guardado"); });
+}
+function restaurarPrecios() { if (!confirm("¿Volver a los precios originales de la app?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
+
+/* ---------- MIS DATOS ---------- */
+function vDatos() {
+  barra("Mis datos", "Aparecen en cada presupuesto", true);
+  const d = S.datos;
+  $("#app").innerHTML = `
+    <div class="card">
+      <div class="field"><label for="d_n">Nombre o empresa</label><input class="inp" id="d_n" value="${esc(d.nombre)}" placeholder="Ej: Juan Pérez"></div>
+      <div class="field"><label for="d_o">Oficio</label><input class="inp" id="d_o" value="${esc(d.oficio)}" placeholder="Ej: Maestro ceramista"></div>
+      <div class="two">
+        <div class="field"><label for="d_t">Teléfono</label><input class="inp" id="d_t" inputmode="tel" value="${esc(d.tel)}" placeholder="+56 9 1234 5678"></div>
+        <div class="field"><label for="d_c">Correo</label><input class="inp" id="d_c" inputmode="email" value="${esc(d.correo)}"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label for="d_r">RUT (opcional)</label><input class="inp" id="d_r" value="${esc(d.rut)}"></div>
+        <div class="field"><label for="d_co">Comuna / zona</label><input class="inp" id="d_co" value="${esc(d.comuna)}"></div>
+      </div>
+      <div class="field"><label for="d_v">Validez del presupuesto (días)</label><input class="inp" id="d_v" inputmode="numeric" value="${esc(d.validez)}"></div>
+      <div class="field" style="margin:0"><label for="d_cd">Condiciones (van al final de cada presupuesto)</label><textarea class="inp" id="d_cd" rows="4">${esc(d.condiciones)}</textarea></div>
+    </div>
+    <div class="card"><h2>Respaldo</h2>
+      <p class="small muted" style="margin:0 0 10px">Tus presupuestos se guardan solo en este teléfono. Envía una copia de respaldo a tu correo o WhatsApp de vez en cuando.</p>
+      <div class="row"><button class="btn sm" onclick="respaldar()">Enviar copia de respaldo</button><button class="btn sm" onclick="restaurarRespaldo()">Restaurar desde copia</button></div>
+    </div>
+    <button class="btn y full" onclick="history.back()">Listo</button>`;
+  const m = {d_n:"nombre", d_o:"oficio", d_t:"tel", d_c:"correo", d_r:"rut", d_co:"comuna", d_v:"validez", d_cd:"condiciones"};
+  for (const [id, k] of Object.entries(m)) $("#" + id).addEventListener("input", e => { d[k] = k === "validez" ? leerNum(e.target.value) : e.target.value; guardar(); });
+}
+function respaldar() { compartir("RESPALDO-MAESTRO:" + btoa(unescape(encodeURIComponent(JSON.stringify(S))))); }
+function restaurarRespaldo() {
+  hoja("Restaurar respaldo", `<p class="small muted" style="margin:0">Pega aquí el texto completo del respaldo (empieza con RESPALDO-MAESTRO:). Reemplaza todo lo que hay en este teléfono.</p>
+    <textarea class="inp" id="rtxt" rows="6"></textarea>`,
+    `<button class="btn" onclick="cerrarHoja()">Cancelar</button><span class="sp"></span><button class="btn y" id="rok">Restaurar</button>`);
+  $("#rok").onclick = () => {
+    try { const t = $("#rtxt").value.trim().replace(/^RESPALDO-MAESTRO:/, "");
+      const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!o || !Array.isArray(o.pres)) throw 0;
+      S = o; guardar(); cargar(); cerrarHoja(); ir("inicio"); toast("Respaldo restaurado");
+    } catch (e) { toast("El texto no es un respaldo válido"); } };
+}
+
+/* ---------- HOJAS (ventanas) ---------- */
+function hoja(titulo, cuerpo, pie) {
+  cerrarHoja();
+  const bg = document.createElement("div"); bg.className = "bg"; bg.id = "hoja";
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sh"><h3>${esc(titulo)}</h3><button class="btn sm" onclick="cerrarHoja()" aria-label="Cerrar">✕</button></div>
+    <div class="sb">${cuerpo}</div>${pie ? `<div class="sf">${pie}</div>` : ""}</div>`;
+  bg.addEventListener("click", e => { if (e.target === bg) cerrarHoja(); });
+  document.body.appendChild(bg);
+}
+function cerrarHoja() { const h = $("#hoja"); if (h) { h.remove(); return true; } return false; }
+
+pintar();
+</script>
+</body>
+</html>
