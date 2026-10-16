@@ -123,7 +123,7 @@ textarea.inp{min-height:70px;resize:vertical}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));background:var(--dark);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;z-index:200;max-width:calc(100% - 32px);text-align:center}
 .preciosbtn{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--yellow);background:#FFFBEA;cursor:pointer}
 .preciosbtn .e{font-size:1.5rem}.preciosbtn .fl{font-size:1.6rem;font-weight:800}.preciosbtn .small{color:var(--muted)}
-.sodi{color:#1D4ED8;font-weight:700;text-decoration:none}
+.sodi{display:inline-block;margin-top:4px;padding:4px 10px;border-radius:8px;background:#E3ECFF;color:#1D4ED8;font-weight:700;font-size:.82rem;text-decoration:none}
 .aviso{background:var(--warn-soft);color:#6B4300;border-radius:10px;padding:10px 12px;font-size:.84rem}
 @media (max-width:420px){.two{grid-template-columns:1fr}.mrow{grid-template-columns:minmax(0,1fr) 80px 84px}}
 @media print{
@@ -221,6 +221,7 @@ const MATERIALES = {
 };
 // Unidades que se compran enteras (se redondean hacia arriba en la lista de compra)
 const ENTERAS = new Set(["saco","un","gl","caja","rollo","paq","tineta"]);
+const UNIDADES = ["un","kg","saco","caja","rollo","paq","gl","m","m²","m³","tineta"];
 
 // Partidas. mo = [mínimo, máximo] mano de obra por unidad. rend = [mín, máx] unidades por día.
 // mats = [[material, cantidad por unidad de la partida]]. tabla = viene de la tabla Chile 2026.
@@ -386,50 +387,8 @@ const PLANTILLAS = [
 /* =====================================================================
    ESTADO (guardado en el teléfono)
    ===================================================================== */
-/* =====================================================================
-   LISTA CENTRAL DE PRECIOS
-   Archivo precios.json en GitHub. Cuando el teléfono tiene internet, la app lo descarga
-   y aplica esos precios a todos los teléfonos. Sin internet usa la última lista descargada.
-   La dirección se completa sola al compilar en GitHub (.github/workflows/compilar-apk.yml).
-   ===================================================================== */
-const URL_PRECIOS = "https://raw.githubusercontent.com/rodrigomega2026/app-maestro/main/precios.json";
-const KC = "maestro-central";
-let CENTRAL = null;   // {fecha, materiales:{id:{p,f,url}}, manoObra:{id:[min,max]}}
-try { CENTRAL = JSON.parse(localStorage.getItem(KC) || "null"); } catch (e) { CENTRAL = null; }
-const numOk = x => typeof x === "number" && isFinite(x) && x >= 0;
-function limpiarCentral(j) {
-  if (!j || typeof j !== "object") return null;
-  const out = {fecha: String(j.fecha || ""), materiales: {}, manoObra: {}};
-  for (const [id, v] of Object.entries(j.materiales || {})) {
-    const o = typeof v === "number" ? {p: v} : (v || {});
-    if (!numOk(o.p)) continue;
-    out.materiales[id] = {p: o.p, f: typeof o.f === "string" ? o.f : "", url: typeof o.url === "string" && /^https:\/\//.test(o.url) ? o.url : ""};
-  }
-  for (const [id, v] of Object.entries(j.manoObra || {}))
-    if (Array.isArray(v) && v.length === 2 && numOk(v[0]) && numOk(v[1])) out.manoObra[id] = v[0] <= v[1] ? [v[0], v[1]] : [v[1], v[0]];
-  return out;
-}
-let revisandoCentral = false;
-async function bajarPrecios(avisar) {
-  if (revisandoCentral || URL_PRECIOS.includes("/USUARIO/")) { if (avisar) toast("Falta configurar la dirección de la lista central"); return; }
-  revisandoCentral = true;
-  try {
-    const r = await fetch(URL_PRECIOS + "?t=" + Date.now(), {cache: "no-store"});
-    if (!r.ok) throw new Error(r.status);
-    const nueva = limpiarCentral(await r.json());
-    if (!nueva) throw new Error("formato");
-    const cambio = JSON.stringify(nueva) !== JSON.stringify(CENTRAL);
-    CENTRAL = nueva; CENTRAL.revisado = Date.now();
-    try { localStorage.setItem(KC, JSON.stringify(CENTRAL)); } catch (e) {}
-    if (cambio) { toast("Precios actualizados" + (CENTRAL.fecha ? " (" + fecha(CENTRAL.fecha) + ")" : "")); if (vista === "inicio" || vista === "precios") pintar(); }
-    else if (avisar) { toast("Los precios ya están al día"); if (vista === "precios") pintar(); }
-  } catch (e) {
-    if (avisar) toast("No se pudo revisar la lista (¿hay internet?)");
-  } finally { revisandoCentral = false; }
-}
 function abrirLink(u) { if (window.Android && Android.abrir) Android.abrir(u); else window.open(u, "_blank"); }
-const linkSodimac = (id, m) => (CENTRAL && CENTRAL.materiales[id] && CENTRAL.materiales[id].url) ||
-  "https://www.sodimac.cl/sodimac-cl/search?Ntt=" + encodeURIComponent(m.b || m.n.replace(/\(.*?\)/g, "").trim());
+const linkSodimac = m => (m.url && /^https:\/\//.test(m.url)) ? m.url : "https://www.sodimac.cl/sodimac-cl/search?Ntt=" + encodeURIComponent(m.b || m.n.replace(/\(.*?\)/g, "").trim());
 
 const K = "maestro-v1";
 const $ = s => document.querySelector(s);
@@ -456,15 +415,16 @@ function cargar() {
   S.pres = S.pres || [];
   S.contador = S.contador || 0;
   S.nivel = S.nivel || "medio";
+  S.misMat = S.misMat || {};   // materiales que agregó el usuario
 }
 function guardar() { try { localStorage.setItem(K, JSON.stringify(S)); } catch (e) { toast("No se pudo guardar en el teléfono"); } }
 cargar();
 
-// Orden: tu precio (editado en el teléfono) > lista central (GitHub) > valor que viene en la app
-const mat = id => { const m = MATERIALES[id] || {n:id, u:"un", p:0, f:""}; const p = S.precios.mat[id]; const c = CENTRAL && CENTRAL.materiales[id];
-  return {...m, p: p != null ? p : c ? c.p : m.p, f: c && c.f ? c.f : m.f, central: !!c && p == null, editado: p != null}; };
-const part = id => { const b = PARTIDAS.find(x => x.id === id); if (!b) return null; const mo = S.precios.mo[id]; const c = CENTRAL && CENTRAL.manoObra[id];
-  return {...b, mo: mo || c || b.mo, central: !!c && !mo, editado: !!mo}; };
+// Tu precio (editado en el teléfono) manda; si no lo cambiaste, se usa el valor que viene en la app
+const todosMat = () => ({...MATERIALES, ...S.misMat});
+const existeMat = id => !!(MATERIALES[id] || S.misMat[id]);
+const mat = id => { const m = MATERIALES[id] || S.misMat[id] || {n:id, u:"un", p:0, f:""}; const p = S.precios.mat[id]; return {...m, p: p != null ? p : m.p, editado: p != null}; };
+const part = id => { const b = PARTIDAS.find(x => x.id === id); if (!b) return null; const mo = S.precios.mo[id]; return {...b, mo: mo || b.mo, editado: !!mo}; };
 const moSegun = (rango, nivel) => nivel === "min" ? rango[0] : nivel === "max" ? rango[1] : Math.round((rango[0] + rango[1]) / 2 / 100) * 100;
 
 /* =====================================================================
@@ -484,7 +444,7 @@ function sincronizar(pr) {
     const b = part(it.pid); if (!b) continue;
     it.rango = [...b.mo];
     if (!it.moManual) it.mo = moSegun(b.mo, S.nivel);
-    for (const m of it.mats) if (!m.pManual) m.p = mat(m.id).p;
+    for (const m of it.mats) if (!m.pManual && existeMat(m.id)) { const x = mat(m.id); m.p = x.p; m.n = x.n; }
   }
 }
 function calcular(pr) {
@@ -528,8 +488,6 @@ addEventListener("popstate", e => {
   vista = st.v; actual = st.id ?? null; pintar();
 });
 history.replaceState({v:"inicio"}, "");
-setTimeout(() => bajarPrecios(false), 800);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && (!CENTRAL || Date.now() - (CENTRAL.revisado || 0) > 3600e3)) bajarPrecios(false); });
 // Para el botón "atrás" de la app Android
 window.atras = () => { if (cerrarHoja()) return true; if (vista !== "inicio") { history.back(); return true; } return false; };
 
@@ -689,10 +647,11 @@ function itemHtml(it, i) {
           <span class="small ${fuera ? "" : "muted"}" style="${fuera ? "color:var(--warn)" : ""}">Referencia: ${clp(it.rango[0])} – ${clp(it.rango[1])}</span></div>
         <div class="field" style="margin:0"><label>Rendimiento</label><div class="inp muted" style="background:var(--soft)">${it.rend ? nf(it.rend[0], 1) + " – " + nf(it.rend[1], 1) + " " + esc(it.u) + "/día" : "Variable"}</div></div>
       </div>
-      ${it.mats.length ? `<label class="switch small"><input type="checkbox" data-conmat="${i}" ${it.conMat ? "checked" : ""}> Incluir materiales de esta partida</label>
+      ${it.mats.length ? `<label class="switch small"><input type="checkbox" data-conmat="${i}" ${it.conMat ? "checked" : ""}> Incluir materiales de este trabajo</label>
         ${it.conMat ? `<div class="mrow h"><span>Material (por ${esc(it.u)})</span><span style="text-align:right">Cantidad</span><span style="text-align:right">Precio</span></div>
-        ${it.mats.map((m, j) => `<div class="mrow"><span>${esc(m.n)}<br><span class="muted small">Total: ${nf(it.cant * m.q)} ${esc(m.u)}</span></span>
-          <input class="inp num" data-mq="${i}:${j}" inputmode="decimal" value="${ni(m.q, 3)}"><input class="inp num" data-mp="${i}:${j}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`).join("")}` : ""}` : `<span class="small muted">Esta partida no lleva materiales.</span>`}
+        ${it.mats.map((m, j) => `<div class="mrow"><span>${esc(m.n)}<br><span class="muted small">Total: ${nf(it.cant * m.q)} ${esc(m.u)}</span> <button class="tog" style="color:var(--bad)" data-qmat="${i}:${j}">✕ quitar</button></span>
+          <input class="inp num" data-mq="${i}:${j}" inputmode="decimal" value="${ni(m.q, 3)}"><input class="inp num" data-mp="${i}:${j}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`).join("")}` : ""}` : `<span class="small muted">Este trabajo no lleva materiales.</span>`}
+      <div><button class="btn sm" data-addmat="${i}">+ Material</button></div>
       <div class="row end"><button class="btn sm red" data-quitar="${i}">Quitar partida</button></div>
     </div>` : ""}
   </div>`;
@@ -704,6 +663,9 @@ function enlazarItems(p) {
   document.querySelectorAll("[data-mq]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mq.split(":").map(Number); p.items[i].mats[j].q = leerDec(el.value); guarda(); });
   document.querySelectorAll("[data-mp]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mp.split(":").map(Number); p.items[i].mats[j].p = leerNum(el.value); p.items[i].mats[j].pManual = true; guarda(); });
   document.querySelectorAll("[data-conmat]").forEach(el => el.onchange = () => { p.items[+el.dataset.conmat].conMat = el.checked; guardar(); vPres(); });
+  document.querySelectorAll("[data-addmat]").forEach(el => el.onclick = () => elegirMaterial(+el.dataset.addmat));
+  document.querySelectorAll("[data-qmat]").forEach(el => el.onclick = () => { const [i, j] = el.dataset.qmat.split(":").map(Number);
+    p.items[i].mats.splice(j, 1); p.mod = Date.now(); guardar(); vPres(); });
   document.querySelectorAll("[data-abrir]").forEach(el => el.onclick = () => { const i = +el.dataset.abrir; abiertos.has(i) ? abiertos.delete(i) : abiertos.add(i); vPres(); });
   document.querySelectorAll("[data-quitar]").forEach(el => el.onclick = () => {
     if (!confirm("¿Quitar esta partida del presupuesto?")) return;
@@ -857,43 +819,99 @@ function imprimir() {
 }
 
 /* ---------- PRECIOS ---------- */
+let tabPrecios = "mat";
 function vPrecios() {
-  barra("Precios", "Cámbialos según tu zona y proveedor", true);
+  barra("Precios", "Revisa los precios y ajústalos a tu zona", true);
   const g = [...new Set(PARTIDAS.map(x => x.g))];
+  const verde = "color:var(--ok);background:var(--ok-soft)";
   $("#app").innerHTML = `
-    <div class="aviso">Los cambios se aplican al tiro en los presupuestos en <b>Borrador</b> (salvo los valores que escribiste a mano dentro del presupuesto). Los presupuestos <b>Enviados</b> o <b>Aceptados</b> no cambian, para que no varíe lo que ya le mandaste al cliente.</div>
-    <div class="card"><div class="row"><span style="flex:1;min-width:0"><b>🔄 Lista central de precios</b><br><span class="small muted">${CENTRAL
-        ? `Precios del ${esc(fecha(CENTRAL.fecha || hoy()))}${CENTRAL.revisado ? " · revisada " + new Date(CENTRAL.revisado).toLocaleString("es-CL", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : ""}`
-        : "Aún no se ha descargado. Se baja sola cuando hay internet."}</span></span>
-      <button class="btn sm d" onclick="bajarPrecios(true)">Revisar ahora</button></div>
-      <p class="small muted" style="margin:8px 0 0">Si cambias un precio aquí, queda <b>tu precio</b> y la lista central ya no lo cambia. Para volver a la lista central usa el botón del final.</p></div>
-    <input class="inp" id="busP" placeholder="Buscar precio (ej: pintura, zinc, puerta)" autocomplete="off">
-    <div class="card"><h2>Mano de obra (mínimo – máximo)</h2>
-      ${g.map(gr => `<div class="lbl grp">${esc(gr)}</div>` + PARTIDAS.filter(x => x.g === gr).map(x => { const pp = part(x.id); return `
-        <div class="mrow" style="margin-top:6px"><span>${x.e} ${esc(x.n)} <span class="muted small">/ ${esc(x.u)}</span>${pp.editado ? `<span class="badge" style="color:var(--ok);background:var(--ok-soft)">tu precio</span>` : pp.central ? `<span class="badge" style="color:#1D4ED8;background:#E3ECFF">lista central</span>` : x.tabla ? "" : `<span class="badge">estimado</span>`}</span>
-          <input class="inp num" data-mo0="${x.id}" inputmode="numeric" value="${pp.mo[0].toLocaleString("es-CL")}"><input class="inp num" data-mo1="${x.id}" inputmode="numeric" value="${pp.mo[1].toLocaleString("es-CL")}"></div>`; }).join("")).join("")}
-    </div>
-    <div class="card"><h2>Materiales</h2>
-      ${Object.keys(MATERIALES).map(id => { const m = mat(id); return `
-        <div class="mrow" style="grid-template-columns:minmax(0,1fr) 110px;margin-top:6px"><span>${esc(m.n)} <span class="muted small">/ ${esc(m.u)}</span>
-          <span class="badge" style="${m.editado || m.f === "Sodimac" ? "color:var(--ok);background:var(--ok-soft)" : ""}">${m.editado ? "tu precio" : esc(m.f || "estimado")}</span>${m.central && !m.editado ? `<span class="badge" style="color:#1D4ED8;background:#E3ECFF">lista central</span>` : ""}
-          <br><a href="#" class="small sodi" data-sodi="${id}">Ver en Sodimac ↗</a></span>
+    <div class="aviso">Toca <b>Revisar precio</b>, mira el precio actual y escríbelo aquí. Los cambios quedan guardados en este teléfono y se aplican al tiro en los presupuestos en <b>Borrador</b>. Los <b>Enviados</b> o <b>Aceptados</b> no cambian.</div>
+    <div class="seg">${[["mat", `Materiales (${Object.keys(MATERIALES).length})`], ["mo", `Mano de obra (${PARTIDAS.length})`]].map(([k, t]) => `<button class="${tabPrecios === k ? "on" : ""}" data-tab="${k}">${t}</button>`).join("")}</div>
+    <input class="inp" id="busP" placeholder="Buscar (ej: cemento, pintura, puerta)" autocomplete="off">
+    ${tabPrecios === "mat" ? `<div class="card"><h2>Materiales <span class="sp"></span><button class="btn sm y" onclick="nuevoMaterial()">+ Agregar material</button></h2>
+      ${Object.keys(todosMat()).map(id => { const m = mat(id); return `
+        <div class="mrow" style="grid-template-columns:minmax(0,1fr) 110px;margin-top:10px"><span>${esc(m.n)} <span class="muted small">/ ${esc(m.u)}</span>
+          <span class="badge" style="${m.editado || m.f === "Sodimac" || m.f === "propio" ? verde : ""}">${m.editado ? "tu precio" : m.f === "propio" ? "agregado por ti" : m.f === "Sodimac" ? "referencia" : "estimado"}</span>
+          <br><a href="#" class="sodi" data-sodi="${id}">Revisar precio ↗</a>${S.misMat[id] ? ` <a href="#" class="sodi" style="background:var(--bad-soft);color:var(--bad)" data-delmat="${id}">Eliminar</a>` : ""}</span>
           <input class="inp num" data-mat="${id}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`; }).join("")}
-      <p class="small muted">"Ver en Sodimac" abre el producto en sodimac.cl para que compares el precio y lo corrijas aquí. "Sodimac": precio tomado de sodimac.cl. "estimado": valor aproximado, conviene revisarlo.</p>
-    </div>
-    <button class="btn red" onclick="restaurarPrecios()">Borrar mis precios (usar lista central)</button>`;
-  document.querySelectorAll("[data-sodi]").forEach(a => a.onclick = e => { e.preventDefault(); const id = a.dataset.sodi; abrirLink(linkSodimac(id, mat(id))); });
-  const g2 = () => guardar();
+      <p class="small muted">"referencia": precio de tienda consultado el 14-10-2026. "estimado": valor aproximado, conviene revisarlo. "tu precio": lo cambiaste tú. "agregado por ti": material que creaste.<br>Los precios son referenciales y pueden cambiar; revisa siempre el precio vigente en la tienda. Esta app no está afiliada a ninguna tienda.</p>
+    </div>` : `<div class="card"><h2>Mano de obra (mínimo – máximo)</h2>
+      ${g.map(gr => `<div class="lbl grp">${esc(gr)}</div>` + PARTIDAS.filter(x => x.g === gr).map(x => { const pp = part(x.id); return `
+        <div class="mrow" style="margin-top:6px"><span>${x.e} ${esc(x.n)} <span class="muted small">/ ${esc(x.u)}</span>${pp.editado ? `<span class="badge" style="${verde}">tu precio</span>` : x.tabla ? "" : `<span class="badge">estimado</span>`}</span>
+          <input class="inp num" data-mo0="${x.id}" inputmode="numeric" value="${pp.mo[0].toLocaleString("es-CL")}"><input class="inp num" data-mo1="${x.id}" inputmode="numeric" value="${pp.mo[1].toLocaleString("es-CL")}"></div>`; }).join("")).join("")}
+    </div>`}
+    <button class="btn red" onclick="restaurarPrecios()">Volver a los precios originales de la app</button>`;
+  document.querySelectorAll("[data-delmat]").forEach(a => a.onclick = e => { e.preventDefault(); const id = a.dataset.delmat;
+    if (!confirm(`¿Eliminar "${S.misMat[id].n}"? Los presupuestos que ya lo usan lo mantienen.`)) return;
+    delete S.misMat[id]; delete S.precios.mat[id]; guardar(); vPrecios(); toast("Material eliminado"); });
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { tabPrecios = b.dataset.tab; vPrecios(); });
+  document.querySelectorAll("[data-sodi]").forEach(a => a.onclick = e => { e.preventDefault(); abrirLink(linkSodimac(mat(a.dataset.sodi))); });
   $("#busP").oninput = e => { const q = e.target.value.trim().toLowerCase();
     document.querySelectorAll("#app .card .mrow").forEach(r => r.hidden = q && !r.textContent.toLowerCase().includes(q));
     document.querySelectorAll("#app .card .grp").forEach(g => { let x = g.nextElementSibling, ver = false; while (x && x.classList.contains("mrow")) { if (!x.hidden) ver = true; x = x.nextElementSibling; } g.hidden = !ver; }); };
   document.querySelectorAll("[data-mo0],[data-mo1]").forEach(el => el.onchange = () => {
     const id = el.dataset.mo0 || el.dataset.mo1, pp = part(id);
     const r = [...pp.mo]; r[el.dataset.mo0 ? 0 : 1] = leerNum(el.value);
-    if (r[0] > r[1]) r.reverse(); S.precios.mo[id] = r; g2(); vPrecios(); toast("Precio guardado"); });
-  document.querySelectorAll("[data-mat]").forEach(el => el.onchange = () => { S.precios.mat[el.dataset.mat] = leerNum(el.value); g2(); vPrecios(); toast("Precio guardado"); });
+    if (r[0] > r[1]) r.reverse(); S.precios.mo[id] = r; guardar(); vPrecios(); toast("Precio guardado"); });
+  document.querySelectorAll("[data-mat]").forEach(el => el.onchange = () => { const id = el.dataset.mat;
+    if (S.misMat[id]) S.misMat[id].p = leerNum(el.value); else S.precios.mat[id] = leerNum(el.value);
+    guardar(); vPrecios(); toast("Precio guardado"); });
 }
-function restaurarPrecios() { if (!confirm("¿Borrar los precios que cambiaste en este teléfono y usar la lista central?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
+function nuevoMaterial(alTerminar) {
+  hoja("Agregar material", `
+    <div class="field"><label for="nm_n">Nombre</label><input class="inp" id="nm_n" placeholder="Ej: Clavo galvanizado 2½&quot;"></div>
+    <div class="two">
+      <div class="field"><label for="nm_u">Se vende por</label><select class="inp" id="nm_u">${UNIDADES.map(u => `<option>${u}</option>`).join("")}</select></div>
+      <div class="field"><label for="nm_p">Precio ($)</label><input class="inp num" id="nm_p" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="field" style="margin:0"><label for="nm_url">Link del producto (opcional)</label><input class="inp" id="nm_url" inputmode="url" placeholder="https://…"></div>
+    <p class="small muted" style="margin:0">Toca "Revisar precio", abre el producto, copia el link desde el navegador (Compartir → Copiar) y pégalo aquí. Así "Revisar precio" abrirá justo ese producto.</p>
+    <a href="#" class="sodi" id="nm_s">Revisar precio ↗</a>`,
+    `<button class="btn" onclick="cerrarHoja()">Cancelar</button><span class="sp"></span><button class="btn y" id="nmOk">Guardar</button>`);
+  setTimeout(() => $("#nm_n")?.focus(), 50);
+  $("#nm_s").onclick = e => { e.preventDefault(); const n = $("#nm_n").value.trim(); if (!n) return toast("Escribe primero el nombre"); abrirLink(linkSodimac({n})); };
+  $("#nmOk").onclick = () => {
+    const n = $("#nm_n").value.trim(); if (!n) { $("#nm_n").focus(); return toast("Escribe el nombre"); }
+    const id = "x" + Date.now().toString(36);
+    const url = $("#nm_url").value.trim();
+    if (url && !/^https:\/\//.test(url)) { $("#nm_url").focus(); return toast("El link debe empezar con https://"); }
+    S.misMat[id] = {n, u: $("#nm_u").value, p: leerNum($("#nm_p").value), f: "propio", url};
+    guardar(); cerrarHoja(); toast("Material agregado");
+    if (alTerminar) alTerminar(id); else vPrecios();
+  };
+}
+// Sumar un material (de la app o propio) a un trabajo del presupuesto
+function elegirMaterial(i) {
+  const p = presActual(), it = p.items[i], todos = todosMat();
+  hoja(`Material para: ${it.n}`, `
+    <input class="inp" id="busM" placeholder="Buscar (ej: clavo, cemento)" autocomplete="off">
+    <button class="cat" id="mNuevo" style="grid-template-columns:36px minmax(0,1fr)"><span class="ic">➕</span><span><b>Crear material nuevo</b><br><span class="small muted">Si no está en la lista</span></span></button>
+    <div id="mlist">${Object.keys(todos).map(id => { const m = mat(id); return `
+      <button class="cat" data-mid="${id}" data-txt="${esc(m.n.toLowerCase())}" style="grid-template-columns:minmax(0,1fr) auto"><span><b>${esc(m.n)}</b>${S.misMat[id] ? `<span class="badge" style="color:var(--ok);background:var(--ok-soft)">tuyo</span>` : ""}</span>
+        <span class="p num">${clp(m.p)}<br>por ${esc(m.u)}</span></button>`; }).join("")}</div>`,
+    `<button class="btn full" onclick="cerrarHoja()">Cerrar</button>`);
+  $("#busM").oninput = e => { const q = e.target.value.trim().toLowerCase(); document.querySelectorAll("#mlist .cat").forEach(b => b.hidden = q && !b.dataset.txt.includes(q)); };
+  $("#mNuevo").onclick = () => nuevoMaterial(id => cantidadMaterial(i, id));
+  document.querySelectorAll("#mlist .cat").forEach(b => b.onclick = () => cantidadMaterial(i, b.dataset.mid));
+}
+function cantidadMaterial(i, id) {
+  const p = presActual(), it = p.items[i], m = mat(id);
+  hoja(m.n, `
+    <div class="field"><label for="mq">¿Cuánto ${esc(m.u)} se usa por cada ${esc(it.u)} de trabajo?</label><input class="inp num" id="mq" inputmode="decimal" placeholder="0" style="font-size:1.2rem;font-weight:800"></div>
+    <div class="field"><label for="mt">o la cantidad total para este trabajo (${nf(it.cant)} ${esc(it.u)})</label><input class="inp num" id="mt" inputmode="decimal" placeholder="0"></div>`,
+    `<button class="btn" onclick="cerrarHoja()">Cancelar</button><span class="sp"></span><button class="btn y" id="mqOk">Agregar</button>`);
+  $("#mt").oninput = () => { const t = leerDec($("#mt").value); if (t && it.cant) $("#mq").value = ni(t / it.cant, 3); };
+  $("#mq").oninput = () => { $("#mt").value = ""; };
+  setTimeout(() => $("#mq")?.focus(), 50);
+  $("#mqOk").onclick = () => {
+    const tot = leerDec($("#mt").value);
+    const q = tot > 0 && it.cant ? tot / it.cant : leerDec($("#mq").value); if (!(q > 0)) { $("#mq").focus(); return toast("Escribe la cantidad"); }
+    const ya = it.mats.find(x => x.id === id);
+    if (ya) ya.q = q; else it.mats.push({id, n: m.n, u: m.u, q, p: m.p});
+    it.conMat = true; abiertos.add(i); p.mod = Date.now(); guardar(); cerrarHoja(); vPres(); toast("Material agregado al trabajo");
+  };
+}
+function restaurarPrecios() { if (!confirm("¿Borrar los precios que cambiaste y volver a los originales de la app?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
 
 /* ---------- MIS DATOS ---------- */
 function vDatos() {
