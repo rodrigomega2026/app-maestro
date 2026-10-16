@@ -392,7 +392,7 @@ const PLANTILLAS = [
    y aplica esos precios a todos los teléfonos. Sin internet usa la última lista descargada.
    La dirección se completa sola al compilar en GitHub (.github/workflows/compilar-apk.yml).
    ===================================================================== */
-const URL_PRECIOS = "https://raw.githubusercontent.com/USUARIO/REPOSITORIO/main/precios.json";
+const URL_PRECIOS = "https://raw.githubusercontent.com/rodrigomega2026/app-maestro/main/precios.json";
 const KC = "maestro-central";
 let CENTRAL = null;   // {fecha, materiales:{id:{p,f,url}}, manoObra:{id:[min,max]}}
 try { CENTRAL = JSON.parse(localStorage.getItem(KC) || "null"); } catch (e) { CENTRAL = null; }
