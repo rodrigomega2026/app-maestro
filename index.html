@@ -121,6 +121,9 @@ textarea.inp{min-height:70px;resize:vertical}
 .doc .firma{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px;font-size:.8rem;text-align:center}
 .doc .firma div{border-top:1px solid #111;padding-top:6px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(90px + env(safe-area-inset-bottom));background:var(--dark);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;z-index:200;max-width:calc(100% - 32px);text-align:center}
+.preciosbtn{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--yellow);background:#FFFBEA;cursor:pointer}
+.preciosbtn .e{font-size:1.5rem}.preciosbtn .fl{font-size:1.6rem;font-weight:800}.preciosbtn .small{color:var(--muted)}
+.sodi{color:#1D4ED8;font-weight:700;text-decoration:none}
 .aviso{background:var(--warn-soft);color:#6B4300;border-radius:10px;padding:10px 12px;font-size:.84rem}
 @media (max-width:420px){.two{grid-template-columns:1fr}.mrow{grid-template-columns:minmax(0,1fr) 80px 84px}}
 @media print{
@@ -182,9 +185,42 @@ const MATERIALES = {
   sanit:     {n:"Materiales sanitarios (por m² de vivienda)", u:"m²", p:16000, f:"estimado"},
   silicona:  {n:"Silicona / sellos", u:"un", p:4500, f:"estimado"},
   flexibles: {n:"Flexibles y llaves de paso", u:"un", p:8000, f:"estimado"},
+  // --- agregados (valores estimados, revísalos en "Precios") ---
+  mortero:   {n:"Mortero predosificado saco 25 kg", u:"saco", p:4500, f:"estimado"},
+  pino24:    {n:"Pino dimensionado 2x4\" x 3,2 m", u:"un", p:3600, f:"estimado"},
+  osb:       {n:"Placa OSB 9,5 mm 1,22x2,44", u:"un", p:9800, f:"estimado"},
+  fibro:     {n:"Fibrocemento 6 mm 1,2x2,4", u:"un", p:13500, f:"estimado"},
+  volcarh:   {n:"Volcanita RH 12,5 mm 1,2x2,4 (zona húmeda)", u:"un", p:9500, f:"estimado"},
+  omega:     {n:"Perfil omega metalcon x 3 m (cielo)", u:"un", p:2200, f:"estimado"},
+  lana:      {n:"Lana de vidrio 50 mm (rollo 12 m²)", u:"rollo", p:22000, f:"estimado"},
+  tejaasf:   {n:"Teja asfáltica (paquete 3 m²)", u:"paq", p:26000, f:"estimado"},
+  impermeab: {n:"Impermeabilizante techo/losa (tineta 18 kg)", u:"tineta", p:45000, f:"estimado"},
+  impercem:  {n:"Impermeabilizante cementicio saco 20 kg", u:"saco", p:18000, f:"estimado"},
+  canaleta:  {n:"Canaleta PVC x 3 m", u:"un", p:9000, f:"estimado"},
+  bajada:    {n:"Bajada de aguas PVC x 3 m", u:"un", p:7500, f:"estimado"},
+  latexext:  {n:"Pintura látex exterior (galón)", u:"gl", p:17000, f:"estimado"},
+  esmalte:   {n:"Esmalte al agua (galón)", u:"gl", p:18000, f:"estimado"},
+  barniz:    {n:"Barniz / protector de madera (galón)", u:"gl", p:25000, f:"estimado"},
+  flotante:  {n:"Piso flotante 8 mm", u:"m²", p:9000, f:"estimado"},
+  vinilico:  {n:"Piso vinílico click", u:"m²", p:14000, f:"estimado"},
+  espuma:    {n:"Espuma niveladora bajo piso", u:"m²", p:600, f:"estimado"},
+  guardap:   {n:"Guardapolvo MDF x 2,4 m", u:"un", p:2800, f:"estimado"},
+  ceraext:   {n:"Cerámica exterior antideslizante", u:"m²", p:8500, f:"estimado"},
+  adoquin:   {n:"Adoquín de hormigón", u:"m²", p:12000, f:"estimado"},
+  poste:     {n:"Poste impregnado 3\" x 2,4 m", u:"un", p:5500, f:"estimado"},
+  tabla15:   {n:"Tabla pino 1x5\" x 3,2 m", u:"un", p:2600, f:"estimado"},
+  puerta:    {n:"Puerta MDF interior 70-80 cm", u:"un", p:45000, f:"estimado"},
+  marco:     {n:"Marco de puerta pino", u:"un", p:15000, f:"estimado"},
+  quincall:  {n:"Bisagras y chapa de puerta", u:"un", p:15000, f:"estimado"},
+  ventana:   {n:"Ventana aluminio (por m²)", u:"m²", p:75000, f:"estimado"},
+  ptoelec:   {n:"Materiales por punto eléctrico (cable, caja, ducto)", u:"un", p:9000, f:"estimado"},
+  artelec:   {n:"Enchufe / interruptor / portalámpara", u:"un", p:3500, f:"estimado"},
+  tablero:   {n:"Tablero eléctrico con automáticos y diferencial", u:"un", p:65000, f:"estimado"},
+  ptoagua:   {n:"Materiales por punto de agua (PPR, fittings)", u:"un", p:12000, f:"estimado"},
+  pvc110:    {n:"Tubo PVC sanitario 110 mm x 6 m", u:"un", p:14000, f:"estimado"},
 };
 // Unidades que se compran enteras (se redondean hacia arriba en la lista de compra)
-const ENTERAS = new Set(["saco","un","gl","caja","rollo"]);
+const ENTERAS = new Set(["saco","un","gl","caja","rollo","paq","tineta"]);
 
 // Partidas. mo = [mínimo, máximo] mano de obra por unidad. rend = [mín, máx] unidades por día.
 // mats = [[material, cantidad por unidad de la partida]]. tabla = viene de la tabla Chile 2026.
@@ -229,6 +265,79 @@ const PARTIDAS = [
     mats:[["silicona",2]]},
   {id:"griferia", g:"Baño y cocina", e:"🔧", n:"Instalación grifería", u:"un", mo:[10000,18000], rend:[4,6], obs:"", tabla:0,
     mats:[["flexibles",1]]},
+  {id:"lavaplatos", g:"Baño y cocina", e:"🍽️", n:"Instalación lavaplatos", u:"un", mo:[20000,35000], rend:[2,3], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["flexibles",1],["silicona",1]]},
+  {id:"tina", g:"Baño y cocina", e:"🛁", n:"Instalación de tina", u:"un", mo:[50000,80000], rend:[0.7,1], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["silicona",2],["flexibles",1]]},
+  {id:"muebcoc", g:"Baño y cocina", e:"🗄️", n:"Instalación muebles de cocina", u:"m", mo:[25000,40000], rend:[2,4], obs:"Por metro lineal; muebles los pone el cliente", tabla:0, mats:[]},
+  {id:"imperbano", g:"Baño y cocina", e:"💦", n:"Impermeabilización zona ducha", u:"m²", mo:[6000,9000], rend:[10,15], obs:"Dos manos, antes del cerámico", tabla:0,
+    mats:[["impercem",0.17]]},
+  {id:"tabiquerh", g:"Baño y cocina", e:"🚪", n:"Tabique volcanita RH (zona húmeda)", u:"m²", mo:[12000,17000], rend:[9,13], obs:"Metalcon, volcanita RH ambas caras", tabla:0,
+    mats:[["volcarh",0.75],["montante",0.9],["canal",0.3],["tornillos",0.3],["pasta",0.05]]},
+
+  // Obra gruesa (agregados)
+  {id:"demol", g:"Obra gruesa", e:"⛏️", n:"Demolición muro albañilería", u:"m²", mo:[10000,16000], rend:[4,8], obs:"No incluye retiro en camión", tabla:0, mats:[]},
+  {id:"excav", g:"Obra gruesa", e:"🕳️", n:"Excavación manual", u:"m³", mo:[18000,28000], rend:[2,4], obs:"Terreno normal", tabla:0, mats:[]},
+  {id:"cimiento", g:"Obra gruesa", e:"🏗️", n:"Cimiento de hormigón", u:"m³", mo:[70000,95000], rend:[1,2], obs:"Incluye enfierradura simple", tabla:0,
+    mats:[["cemento",9],["arena",0.5],["gravilla",0.8],["fierro",30],["alambre",0.5]]},
+  {id:"estucoext", g:"Obra gruesa", e:"🧰", n:"Estuco exterior (mortero)", u:"m²", mo:[10000,15000], rend:[8,12], obs:"Espesor 2 cm aprox.", tabla:0,
+    mats:[["cemento",0.25],["arena",0.025]]},
+  {id:"nivelac", g:"Obra gruesa", e:"📏", n:"Nivelación de piso (mortero 3 cm)", u:"m²", mo:[6000,9000], rend:[15,25], obs:"Sobrelosa / afinado", tabla:0,
+    mats:[["mortero",2.4]]},
+
+  // Techo y exterior
+  {id:"estrtecho", g:"Techo y exterior", e:"🪚", n:"Estructura de techo (cerchas pino)", u:"m²", mo:[12000,18000], rend:[8,12], obs:"Medido en planta inclinada", tabla:0,
+    mats:[["pino24",1.2],["costanera",0.5],["clavos",0.2]]},
+  {id:"tejaasf", g:"Techo y exterior", e:"🏠", n:"Cubierta teja asfáltica", u:"m²", mo:[9000,14000], rend:[10,15], obs:"Incluye OSB y fieltro", tabla:0,
+    mats:[["osb",0.37],["tejaasf",0.36],["fieltro",0.028],["clavos",0.05]]},
+  {id:"imptecho", g:"Techo y exterior", e:"🌧️", n:"Impermeabilización techo / losa", u:"m²", mo:[5000,8000], rend:[20,30], obs:"Dos manos", tabla:0,
+    mats:[["impermeab",0.06]]},
+  {id:"canaletas", g:"Techo y exterior", e:"🌊", n:"Canaletas y bajadas", u:"m", mo:[6000,9000], rend:[10,15], obs:"Por metro lineal de canaleta", tabla:0,
+    mats:[["canaleta",0.35],["bajada",0.12]]},
+  {id:"fibrocem", g:"Techo y exterior", e:"🏘️", n:"Revestimiento fibrocemento exterior", u:"m²", mo:[9000,14000], rend:[10,15], obs:"Sobre estructura existente", tabla:0,
+    mats:[["fibro",0.37],["pino23",0.8],["tornillos",0.1]]},
+  {id:"pintext", g:"Techo y exterior", e:"🖌️", n:"Pintura exterior látex", u:"m²", mo:[5000,8000], rend:[18,25], obs:"Dos manos", tabla:0,
+    mats:[["latexext",0.06]]},
+  {id:"barniz", g:"Techo y exterior", e:"🪵", n:"Barniz / protector de madera", u:"m²", mo:[4000,6500], rend:[15,25], obs:"Dos manos", tabla:0,
+    mats:[["barniz",0.05]]},
+  {id:"cerco", g:"Techo y exterior", e:"🚧", n:"Cerco de madera 1,8 m alto", u:"m", mo:[15000,22000], rend:[4,6], obs:"Por metro lineal", tabla:0,
+    mats:[["poste",0.5],["tabla15",4.5],["clavos",0.2],["cemento",0.3]]},
+  {id:"adoquin", g:"Techo y exterior", e:"🧱", n:"Pavimento de adoquines", u:"m²", mo:[10000,15000], rend:[6,10], obs:"Sobre cama de arena", tabla:0,
+    mats:[["adoquin",1.05],["arena",0.05]]},
+  {id:"ceraext", g:"Techo y exterior", e:"🟫", n:"Cerámica exterior (terraza)", u:"m²", mo:[11000,16000], rend:[8,12], obs:"Antideslizante", tabla:0,
+    mats:[["ceraext",1.08],["adhes",0.3],["frague",0.3]]},
+
+  // Terminaciones (agregados)
+  {id:"cielo", g:"Terminaciones", e:"⬆️", n:"Cielo de volcanita", u:"m²", mo:[12000,17000], rend:[8,12], obs:"Estructura omega metalcon", tabla:0,
+    mats:[["volcanita",0.37],["omega",0.85],["tornillos",0.2],["pasta",0.05]]},
+  {id:"aislacion", g:"Terminaciones", e:"🧶", n:"Aislación lana de vidrio", u:"m²", mo:[2500,4000], rend:[30,50], obs:"En muros o cielo", tabla:0,
+    mats:[["lana",0.09]]},
+  {id:"empaste", g:"Terminaciones", e:"🧽", n:"Empaste y lijado de muros", u:"m²", mo:[3500,6000], rend:[20,30], obs:"Antes de pintar", tabla:0,
+    mats:[["pasta",0.08]]},
+  {id:"esmalte", g:"Terminaciones", e:"🎨", n:"Pintura esmalte al agua (baño/cocina)", u:"m²", mo:[5000,7500], rend:[18,25], obs:"Dos manos", tabla:0,
+    mats:[["esmalte",0.055]]},
+  {id:"flotante", g:"Terminaciones", e:"🟨", n:"Piso flotante", u:"m²", mo:[6000,9000], rend:[15,25], obs:"Con espuma niveladora", tabla:0,
+    mats:[["flotante",1.08],["espuma",1.05]]},
+  {id:"vinilico", g:"Terminaciones", e:"🟫", n:"Piso vinílico click", u:"m²", mo:[6000,9500], rend:[15,25], obs:"", tabla:0,
+    mats:[["vinilico",1.06]]},
+  {id:"guardap", g:"Terminaciones", e:"📐", n:"Guardapolvo", u:"m", mo:[1500,2500], rend:[30,50], obs:"Por metro lineal", tabla:0,
+    mats:[["guardap",0.45]]},
+  {id:"puerta", g:"Terminaciones", e:"🚪", n:"Instalación puerta interior", u:"un", mo:[35000,55000], rend:[1.5,3], obs:"Con marco y quincallería", tabla:0,
+    mats:[["puerta",1],["marco",1],["quincall",1]]},
+  {id:"ventana", g:"Terminaciones", e:"🪟", n:"Ventana de aluminio", u:"m²", mo:[15000,25000], rend:[4,6], obs:"Instalación y sellado", tabla:0,
+    mats:[["ventana",1],["silicona",0.5]]},
+
+  // Instalaciones (agregados)
+  {id:"ptoelec", g:"Instalaciones", e:"🔌", n:"Punto eléctrico (enchufe, interruptor o luz)", u:"un", mo:[18000,28000], rend:[6,10], obs:"", tabla:0,
+    mats:[["ptoelec",1],["artelec",1]]},
+  {id:"tablero", g:"Instalaciones", e:"🔋", n:"Cambio de tablero eléctrico", u:"un", mo:[60000,100000], rend:[1,1], obs:"Con automáticos y diferencial", tabla:0,
+    mats:[["tablero",1]]},
+  {id:"ptoagua", g:"Instalaciones", e:"🚿", n:"Punto de agua (fría o caliente)", u:"un", mo:[30000,50000], rend:[3,5], obs:"", tabla:0,
+    mats:[["ptoagua",1]]},
+  {id:"desague", g:"Instalaciones", e:"🪠", n:"Desagüe PVC", u:"m", mo:[8000,13000], rend:[10,15], obs:"Por metro lineal", tabla:0,
+    mats:[["pvc110",0.2]]},
+  {id:"calefont", g:"Instalaciones", e:"🔥", n:"Instalación de calefont", u:"un", mo:[40000,65000], rend:[1,2], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["flexibles",2]]},
 ];
 
 // Plantillas: preguntan medidas y arman las partidas
@@ -256,11 +365,72 @@ const PLANTILLAS = [
   {id:"radier", e:"⬛", n:"Radier / losa de piso", d:"Hormigón 10 cm",
     campos:[["largo","Largo (m)",5],["ancho","Ancho (m)",4]],
     arma:v=>[["radier",v.largo*v.ancho]]},
+  {id:"flot", e:"🟨", n:"Piso flotante", d:"Piso y guardapolvo",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
+    arma:v=>[["flotante",v.largo*v.ancho],["guardap",2*(v.largo+v.ancho)]]},
+  {id:"cielo", e:"⬆️", n:"Cielo nuevo", d:"Volcanita, aislación y pintura",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
+    arma:v=>{const a=v.largo*v.ancho;return [["cielo",a],["aislacion",a],["pintura",a]]}},
+  {id:"cocina", e:"🍳", n:"Remodelar cocina", d:"Cerámica, muebles y lavaplatos",
+    campos:[["largo","Largo de la cocina (m)",3],["ancho","Ancho de la cocina (m)",2.5],["mueble","Metros de mueble",3]],
+    arma:v=>{const piso=v.largo*v.ancho, muro=v.mueble*0.6;
+      return [["retiro",piso],["ceramico",piso],["ceramuro",muro],["muebcoc",v.mueble],["lavaplatos",1],["griferia",1],["ptoelec",2],["esmalte",piso*1.5]]}},
+  {id:"cerco", e:"🚧", n:"Cerco de madera", d:"Postes y tablas 1,8 m",
+    campos:[["largo","Largo del cerco (m)",10]],
+    arma:v=>[["cerco",v.largo],["barniz",v.largo*1.8*2]]},
+  {id:"tejas", e:"🏡", n:"Techo teja asfáltica", d:"Estructura, OSB y teja",
+    campos:[["largo","Largo (m)",8],["ancho","Ancho (m)",6]],
+    arma:v=>{const a=v.largo*v.ancho*1.15;return [["estrtecho",a],["tejaasf",a],["canaletas",2*v.largo]]}},
 ];
 
 /* =====================================================================
    ESTADO (guardado en el teléfono)
    ===================================================================== */
+/* =====================================================================
+   LISTA CENTRAL DE PRECIOS
+   Archivo precios.json en GitHub. Cuando el teléfono tiene internet, la app lo descarga
+   y aplica esos precios a todos los teléfonos. Sin internet usa la última lista descargada.
+   La dirección se completa sola al compilar en GitHub (.github/workflows/compilar-apk.yml).
+   ===================================================================== */
+const URL_PRECIOS = "https://raw.githubusercontent.com/USUARIO/REPOSITORIO/main/precios.json";
+const KC = "maestro-central";
+let CENTRAL = null;   // {fecha, materiales:{id:{p,f,url}}, manoObra:{id:[min,max]}}
+try { CENTRAL = JSON.parse(localStorage.getItem(KC) || "null"); } catch (e) { CENTRAL = null; }
+const numOk = x => typeof x === "number" && isFinite(x) && x >= 0;
+function limpiarCentral(j) {
+  if (!j || typeof j !== "object") return null;
+  const out = {fecha: String(j.fecha || ""), materiales: {}, manoObra: {}};
+  for (const [id, v] of Object.entries(j.materiales || {})) {
+    const o = typeof v === "number" ? {p: v} : (v || {});
+    if (!numOk(o.p)) continue;
+    out.materiales[id] = {p: o.p, f: typeof o.f === "string" ? o.f : "", url: typeof o.url === "string" && /^https:\/\//.test(o.url) ? o.url : ""};
+  }
+  for (const [id, v] of Object.entries(j.manoObra || {}))
+    if (Array.isArray(v) && v.length === 2 && numOk(v[0]) && numOk(v[1])) out.manoObra[id] = v[0] <= v[1] ? [v[0], v[1]] : [v[1], v[0]];
+  return out;
+}
+let revisandoCentral = false;
+async function bajarPrecios(avisar) {
+  if (revisandoCentral || URL_PRECIOS.includes("/USUARIO/")) { if (avisar) toast("Falta configurar la dirección de la lista central"); return; }
+  revisandoCentral = true;
+  try {
+    const r = await fetch(URL_PRECIOS + "?t=" + Date.now(), {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    const nueva = limpiarCentral(await r.json());
+    if (!nueva) throw new Error("formato");
+    const cambio = JSON.stringify(nueva) !== JSON.stringify(CENTRAL);
+    CENTRAL = nueva; CENTRAL.revisado = Date.now();
+    try { localStorage.setItem(KC, JSON.stringify(CENTRAL)); } catch (e) {}
+    if (cambio) { toast("Precios actualizados" + (CENTRAL.fecha ? " (" + fecha(CENTRAL.fecha) + ")" : "")); if (vista === "inicio" || vista === "precios") pintar(); }
+    else if (avisar) { toast("Los precios ya están al día"); if (vista === "precios") pintar(); }
+  } catch (e) {
+    if (avisar) toast("No se pudo revisar la lista (¿hay internet?)");
+  } finally { revisandoCentral = false; }
+}
+function abrirLink(u) { if (window.Android && Android.abrir) Android.abrir(u); else window.open(u, "_blank"); }
+const linkSodimac = (id, m) => (CENTRAL && CENTRAL.materiales[id] && CENTRAL.materiales[id].url) ||
+  "https://www.sodimac.cl/sodimac-cl/search?Ntt=" + encodeURIComponent(m.b || m.n.replace(/\(.*?\)/g, "").trim());
+
 const K = "maestro-v1";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -290,8 +460,11 @@ function cargar() {
 function guardar() { try { localStorage.setItem(K, JSON.stringify(S)); } catch (e) { toast("No se pudo guardar en el teléfono"); } }
 cargar();
 
-const mat = id => { const m = MATERIALES[id] || {n:id, u:"un", p:0, f:""}; const p = S.precios.mat[id]; return {...m, p: p != null ? p : m.p, editado: p != null}; };
-const part = id => { const b = PARTIDAS.find(x => x.id === id); if (!b) return null; const mo = S.precios.mo[id]; return {...b, mo: mo || b.mo, editado: !!mo}; };
+// Orden: tu precio (editado en el teléfono) > lista central (GitHub) > valor que viene en la app
+const mat = id => { const m = MATERIALES[id] || {n:id, u:"un", p:0, f:""}; const p = S.precios.mat[id]; const c = CENTRAL && CENTRAL.materiales[id];
+  return {...m, p: p != null ? p : c ? c.p : m.p, f: c && c.f ? c.f : m.f, central: !!c && p == null, editado: p != null}; };
+const part = id => { const b = PARTIDAS.find(x => x.id === id); if (!b) return null; const mo = S.precios.mo[id]; const c = CENTRAL && CENTRAL.manoObra[id];
+  return {...b, mo: mo || c || b.mo, central: !!c && !mo, editado: !!mo}; };
 const moSegun = (rango, nivel) => nivel === "min" ? rango[0] : nivel === "max" ? rango[1] : Math.round((rango[0] + rango[1]) / 2 / 100) * 100;
 
 /* =====================================================================
@@ -303,7 +476,19 @@ function nuevoItem(pid, cant) {
     rend: p.rend ? [...p.rend] : null, obs:p.obs, conMat:true,
     mats: p.mats.map(([id, q]) => { const m = mat(id); return {id, n:m.n, u:m.u, q, p:m.p}; }) };
 }
+// Los presupuestos en borrador siguen la lista de "Precios": si cambias un precio allá, se actualiza aquí.
+// No se tocan los valores que escribiste a mano dentro del presupuesto, ni los presupuestos ya enviados/aceptados.
+function sincronizar(pr) {
+  if ((pr.estado || "borrador") !== "borrador") return;
+  for (const it of pr.items) {
+    const b = part(it.pid); if (!b) continue;
+    it.rango = [...b.mo];
+    if (!it.moManual) it.mo = moSegun(b.mo, S.nivel);
+    for (const m of it.mats) if (!m.pManual) m.p = mat(m.id).p;
+  }
+}
 function calcular(pr) {
+  sincronizar(pr);
   let mo = 0, dias = 0;
   const lista = new Map();
   for (const it of pr.items) {
@@ -343,6 +528,8 @@ addEventListener("popstate", e => {
   vista = st.v; actual = st.id ?? null; pintar();
 });
 history.replaceState({v:"inicio"}, "");
+setTimeout(() => bajarPrecios(false), 800);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && (!CENTRAL || Date.now() - (CENTRAL.revisado || 0) > 3600e3)) bajarPrecios(false); });
 // Para el botón "atrás" de la app Android
 window.atras = () => { if (cerrarHoja()) return true; if (vista !== "inicio") { history.back(); return true; } return false; };
 
@@ -367,6 +554,7 @@ function vInicio() {
   const lista = [...S.pres].sort((a, b) => (b.mod || 0) - (a.mod || 0));
   const sinDatos = !S.datos.nombre;
   $("#app").innerHTML = `
+    <button class="preciosbtn" onclick="ir('precios')"><span class="e">💲</span><span><b>Precios de mano de obra y materiales</b><br><span class="small">${PARTIDAS.length} trabajos · ${Object.keys(MATERIALES).length} materiales · tócalo para revisarlos o cambiarlos</span></span><span class="fl">›</span></button>
     ${sinDatos ? `<div class="card" style="border-color:var(--yellow);background:#FFFBEA"><b>Primero, tus datos</b><p class="small muted" style="margin:4px 0 10px">Tu nombre y teléfono aparecerán en cada presupuesto que envíes.</p><button class="btn y" onclick="ir('datos')">Completar mis datos</button></div>` : ""}
     <div class="card">
       <h2>¿Qué trabajo vas a cotizar?</h2>
@@ -382,8 +570,7 @@ function vInicio() {
           <b>${esc(p.titulo || "Presupuesto")}</b><br><span class="small muted">${esc(p.cliente.nombre || "Sin cliente")}${p.cliente.dir ? " · " + esc(p.cliente.dir) : ""}</span></span>
         <span class="tot num">${clp(c.total)}<br><span class="small muted" style="font-weight:400">${p.items.length} partida${p.items.length === 1 ? "" : "s"}</span></span>
       </button>`; }).join("")
-    : `<div class="vacio"><b>Aún no tienes presupuestos</b>Elige un trabajo arriba para hacer el primero.</div>`}
-    <p class="small muted" style="text-align:center">Precios de mano de obra: tabla referencial Chile 2026. Materiales: Sodimac (14-10-2026) y estimados. Revísalos en <a href="#" onclick="ir('precios');return false">Precios</a>.</p>`;
+    : `<div class="vacio"><b>Aún no tienes presupuestos</b>Elige un trabajo arriba para hacer el primero.</div>`}`;
 }
 const estadoTxt = e => ({borrador:"Borrador", enviado:"Enviado", aceptado:"Aceptado", rechazado:"Rechazado"})[e] || "Borrador";
 
@@ -426,10 +613,10 @@ function vPres() {
     </div>
 
     <div class="card">
-      <h2><span class="n">2</span>Partidas <span class="sp"></span><button class="btn sm y" onclick="agregarPartida()">+ Agregar</button></h2>
+      <h2><span class="n">2</span>Proyecto <span class="sp"></span><button class="btn sm y" onclick="agregarPartida()">+ Agregar</button></h2>
       <div class="row" style="margin-bottom:10px"><span class="small muted">Precio de mano de obra:</span>
         <div class="seg" style="flex:1">${[["min","Mínimo"],["medio","Medio"],["max","Máximo"]].map(([k, t]) => `<button class="${S.nivel === k ? "on" : ""}" onclick="cambiarNivel('${k}')">${t}</button>`).join("")}</div></div>
-      <div id="items">${p.items.length ? p.items.map((it, i) => itemHtml(it, i)).join("") : `<div class="vacio"><b>Sin partidas</b>Toca "+ Agregar" para elegir trabajos.</div>`}</div>
+      <div id="items">${p.items.length ? p.items.map((it, i) => itemHtml(it, i)).join("") : `<div class="vacio"><b>Proyecto vacío</b>Toca "+ Agregar" para elegir trabajos.</div>`}</div>
     </div>
 
     <div class="card">
@@ -515,7 +702,7 @@ function enlazarItems(p) {
   document.querySelectorAll("[data-cant]").forEach(el => el.oninput = () => { p.items[+el.dataset.cant].cant = leerDec(el.value); guarda(); });
   document.querySelectorAll("[data-mo]").forEach(el => el.oninput = () => { const it = p.items[+el.dataset.mo]; it.mo = leerNum(el.value); it.moManual = true; guarda(); });
   document.querySelectorAll("[data-mq]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mq.split(":").map(Number); p.items[i].mats[j].q = leerDec(el.value); guarda(); });
-  document.querySelectorAll("[data-mp]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mp.split(":").map(Number); p.items[i].mats[j].p = leerNum(el.value); guarda(); });
+  document.querySelectorAll("[data-mp]").forEach(el => el.oninput = () => { const [i, j] = el.dataset.mp.split(":").map(Number); p.items[i].mats[j].p = leerNum(el.value); p.items[i].mats[j].pManual = true; guarda(); });
   document.querySelectorAll("[data-conmat]").forEach(el => el.onchange = () => { p.items[+el.dataset.conmat].conMat = el.checked; guardar(); vPres(); });
   document.querySelectorAll("[data-abrir]").forEach(el => el.onclick = () => { const i = +el.dataset.abrir; abiertos.has(i) ? abiertos.delete(i) : abiertos.add(i); vPres(); });
   document.querySelectorAll("[data-quitar]").forEach(el => el.onclick = () => {
@@ -674,28 +861,39 @@ function vPrecios() {
   barra("Precios", "Cámbialos según tu zona y proveedor", true);
   const g = [...new Set(PARTIDAS.map(x => x.g))];
   $("#app").innerHTML = `
-    <div class="aviso">Los cambios se usan en los <b>presupuestos nuevos</b> y en las partidas que agregues. Los presupuestos ya hechos no cambian.</div>
+    <div class="aviso">Los cambios se aplican al tiro en los presupuestos en <b>Borrador</b> (salvo los valores que escribiste a mano dentro del presupuesto). Los presupuestos <b>Enviados</b> o <b>Aceptados</b> no cambian, para que no varíe lo que ya le mandaste al cliente.</div>
+    <div class="card"><div class="row"><span style="flex:1;min-width:0"><b>🔄 Lista central de precios</b><br><span class="small muted">${CENTRAL
+        ? `Precios del ${esc(fecha(CENTRAL.fecha || hoy()))}${CENTRAL.revisado ? " · revisada " + new Date(CENTRAL.revisado).toLocaleString("es-CL", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}) : ""}`
+        : "Aún no se ha descargado. Se baja sola cuando hay internet."}</span></span>
+      <button class="btn sm d" onclick="bajarPrecios(true)">Revisar ahora</button></div>
+      <p class="small muted" style="margin:8px 0 0">Si cambias un precio aquí, queda <b>tu precio</b> y la lista central ya no lo cambia. Para volver a la lista central usa el botón del final.</p></div>
+    <input class="inp" id="busP" placeholder="Buscar precio (ej: pintura, zinc, puerta)" autocomplete="off">
     <div class="card"><h2>Mano de obra (mínimo – máximo)</h2>
       ${g.map(gr => `<div class="lbl grp">${esc(gr)}</div>` + PARTIDAS.filter(x => x.g === gr).map(x => { const pp = part(x.id); return `
-        <div class="mrow" style="margin-top:6px"><span>${x.e} ${esc(x.n)} <span class="muted small">/ ${esc(x.u)}</span>${x.tabla ? "" : `<span class="badge">estimado</span>`}${pp.editado ? `<span class="badge" style="color:var(--ok);background:var(--ok-soft)">editado</span>` : ""}</span>
+        <div class="mrow" style="margin-top:6px"><span>${x.e} ${esc(x.n)} <span class="muted small">/ ${esc(x.u)}</span>${pp.editado ? `<span class="badge" style="color:var(--ok);background:var(--ok-soft)">tu precio</span>` : pp.central ? `<span class="badge" style="color:#1D4ED8;background:#E3ECFF">lista central</span>` : x.tabla ? "" : `<span class="badge">estimado</span>`}</span>
           <input class="inp num" data-mo0="${x.id}" inputmode="numeric" value="${pp.mo[0].toLocaleString("es-CL")}"><input class="inp num" data-mo1="${x.id}" inputmode="numeric" value="${pp.mo[1].toLocaleString("es-CL")}"></div>`; }).join("")).join("")}
     </div>
     <div class="card"><h2>Materiales</h2>
       ${Object.keys(MATERIALES).map(id => { const m = mat(id); return `
         <div class="mrow" style="grid-template-columns:minmax(0,1fr) 110px;margin-top:6px"><span>${esc(m.n)} <span class="muted small">/ ${esc(m.u)}</span>
-          <span class="badge" style="${m.f === "Sodimac" ? "color:var(--ok);background:var(--ok-soft)" : ""}">${m.editado ? "editado" : esc(m.f)}</span></span>
+          <span class="badge" style="${m.editado || m.f === "Sodimac" ? "color:var(--ok);background:var(--ok-soft)" : ""}">${m.editado ? "tu precio" : esc(m.f || "estimado")}</span>${m.central && !m.editado ? `<span class="badge" style="color:#1D4ED8;background:#E3ECFF">lista central</span>` : ""}
+          <br><a href="#" class="small sodi" data-sodi="${id}">Ver en Sodimac ↗</a></span>
           <input class="inp num" data-mat="${id}" inputmode="numeric" value="${Math.round(m.p).toLocaleString("es-CL")}"></div>`; }).join("")}
-      <p class="small muted">"Sodimac": precio consultado en sodimac.cl el 14-10-2026. "estimado": valor aproximado, conviene revisarlo.</p>
+      <p class="small muted">"Ver en Sodimac" abre el producto en sodimac.cl para que compares el precio y lo corrijas aquí. "Sodimac": precio tomado de sodimac.cl. "estimado": valor aproximado, conviene revisarlo.</p>
     </div>
-    <button class="btn red" onclick="restaurarPrecios()">Restaurar valores originales</button>`;
+    <button class="btn red" onclick="restaurarPrecios()">Borrar mis precios (usar lista central)</button>`;
+  document.querySelectorAll("[data-sodi]").forEach(a => a.onclick = e => { e.preventDefault(); const id = a.dataset.sodi; abrirLink(linkSodimac(id, mat(id))); });
   const g2 = () => guardar();
+  $("#busP").oninput = e => { const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#app .card .mrow").forEach(r => r.hidden = q && !r.textContent.toLowerCase().includes(q));
+    document.querySelectorAll("#app .card .grp").forEach(g => { let x = g.nextElementSibling, ver = false; while (x && x.classList.contains("mrow")) { if (!x.hidden) ver = true; x = x.nextElementSibling; } g.hidden = !ver; }); };
   document.querySelectorAll("[data-mo0],[data-mo1]").forEach(el => el.onchange = () => {
     const id = el.dataset.mo0 || el.dataset.mo1, pp = part(id);
     const r = [...pp.mo]; r[el.dataset.mo0 ? 0 : 1] = leerNum(el.value);
     if (r[0] > r[1]) r.reverse(); S.precios.mo[id] = r; g2(); vPrecios(); toast("Precio guardado"); });
   document.querySelectorAll("[data-mat]").forEach(el => el.onchange = () => { S.precios.mat[el.dataset.mat] = leerNum(el.value); g2(); vPrecios(); toast("Precio guardado"); });
 }
-function restaurarPrecios() { if (!confirm("¿Volver a los precios originales de la app?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
+function restaurarPrecios() { if (!confirm("¿Borrar los precios que cambiaste en este teléfono y usar la lista central?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
 
 /* ---------- MIS DATOS ---------- */
 function vDatos() {
