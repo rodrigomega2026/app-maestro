@@ -369,6 +369,12 @@ const PLANTILLAS = [
   {id:"flot", e:"🟨", n:"Piso flotante", d:"Piso y guardapolvo",
     campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
     arma:v=>[["flotante",v.largo*v.ancho],["guardap",2*(v.largo+v.ancho)]]},
+  {id:"electrico", e:"⚡", n:"Trabajos eléctricos", d:"Enchufes, luces y tablero",
+    campos:[["enchufes","Enchufes nuevos (cantidad)",4],["luces","Puntos de luz / interruptores (cantidad)",3],["tablero","Cambiar tablero (1 = sí, 0 = no)",0]],
+    arma:v=>[["ptoelec",v.enchufes+v.luces],["tablero",v.tablero]]},
+  {id:"eleccasa", e:"🔌", n:"Instalación eléctrica casa", d:"Instalación completa por m² y tablero",
+    campos:[["m2","Superficie de la casa (m²)",60],["tablero","Tablero nuevo (1 = sí, 0 = no)",1]],
+    arma:v=>[["electrica",v.m2],["tablero",v.tablero]]},
   {id:"cielo", e:"⬆️", n:"Cielo nuevo", d:"Volcanita, aislación y pintura",
     campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
     arma:v=>{const a=v.largo*v.ancho;return [["cielo",a],["aislacion",a],["pintura",a]]}},
@@ -668,8 +674,9 @@ function enlazarItems(p) {
     p.items[i].mats.splice(j, 1); p.mod = Date.now(); guardar(); vPres(); });
   document.querySelectorAll("[data-abrir]").forEach(el => el.onclick = () => { const i = +el.dataset.abrir; abiertos.has(i) ? abiertos.delete(i) : abiertos.add(i); vPres(); });
   document.querySelectorAll("[data-quitar]").forEach(el => el.onclick = () => {
-    if (!confirm("¿Quitar esta partida del presupuesto?")) return;
-    p.items.splice(+el.dataset.quitar, 1); abiertos.clear(); p.mod = Date.now(); guardar(); vPres(); });
+    const i = +el.dataset.quitar;
+    confirmar("¿Quitar esta partida del presupuesto?", "Quitar", () => {
+      p.items.splice(i, 1); abiertos.clear(); p.mod = Date.now(); guardar(); vPres(); toast("Partida quitada"); }); });
   // al salir de un campo numérico se ordena el formato
   document.querySelectorAll("[data-cant],[data-mo],[data-mq],[data-mp]").forEach(el => el.onblur = () => setTimeout(() => {
     const a = document.activeElement; if (vista === "pres" && !(a && a.matches("input,textarea,select"))) vPres(); }, 0));
@@ -721,8 +728,9 @@ function opcionesPres() {
 }
 function marcar(e) { const p = presActual(); p.estado = e; p.mod = Date.now(); guardar(); cerrarHoja(); pintar(); toast("Marcado como " + estadoTxt(e).toLowerCase()); }
 function borrarPres() {
-  if (!confirm("¿Eliminar este presupuesto? No se puede deshacer.")) return;
-  S.pres = S.pres.filter(p => p.id !== actual); guardar(); history.back(); toast("Presupuesto eliminado");
+  confirmar("¿Eliminar este presupuesto? No se puede deshacer.", "Eliminar", () => {
+    S.pres = S.pres.filter(p => p.id !== actual); actual = null; guardar();
+    vista = "inicio"; history.replaceState({v:"inicio"}, ""); pintar(); scrollTo(0, 0); toast("Presupuesto eliminado"); });
 }
 function duplicarPres() {
   const o = presActual(); S.contador++;
@@ -842,8 +850,8 @@ function vPrecios() {
     </div>`}
     <button class="btn red" onclick="restaurarPrecios()">Volver a los precios originales de la app</button>`;
   document.querySelectorAll("[data-delmat]").forEach(a => a.onclick = e => { e.preventDefault(); const id = a.dataset.delmat;
-    if (!confirm(`¿Eliminar "${S.misMat[id].n}"? Los presupuestos que ya lo usan lo mantienen.`)) return;
-    delete S.misMat[id]; delete S.precios.mat[id]; guardar(); vPrecios(); toast("Material eliminado"); });
+    confirmar(`¿Eliminar "${S.misMat[id].n}"? Los presupuestos que ya lo usan lo mantienen.`, "Eliminar", () => {
+      delete S.misMat[id]; delete S.precios.mat[id]; guardar(); vPrecios(); toast("Material eliminado"); }); });
   document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { tabPrecios = b.dataset.tab; vPrecios(); });
   document.querySelectorAll("[data-sodi]").forEach(a => a.onclick = e => { e.preventDefault(); abrirLink(linkSodimac(mat(a.dataset.sodi))); });
   $("#busP").oninput = e => { const q = e.target.value.trim().toLowerCase();
@@ -911,7 +919,7 @@ function cantidadMaterial(i, id) {
     it.conMat = true; abiertos.add(i); p.mod = Date.now(); guardar(); cerrarHoja(); vPres(); toast("Material agregado al trabajo");
   };
 }
-function restaurarPrecios() { if (!confirm("¿Borrar los precios que cambiaste y volver a los originales de la app?")) return; S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }
+function restaurarPrecios() { confirmar("¿Borrar los precios que cambiaste y volver a los originales de la app?", "Sí, restaurar", () => { S.precios = {mat:{}, mo:{}}; guardar(); vPrecios(); toast("Precios restaurados"); }); }
 
 /* ---------- MIS DATOS ---------- */
 function vDatos() {
@@ -962,6 +970,12 @@ function hoja(titulo, cuerpo, pie) {
   document.body.appendChild(bg);
 }
 function cerrarHoja() { const h = $("#hoja"); if (h) { h.remove(); return true; } return false; }
+// Pregunta dentro de la app (el confirm() del navegador no funciona dentro del APK)
+function confirmar(texto, botonSi, alAceptar) {
+  hoja("Confirmar", `<p style="margin:0;font-size:1rem">${esc(texto)}</p>`,
+    `<button class="btn" onclick="cerrarHoja()">Cancelar</button><span class="sp"></span><button class="btn d" id="cfOk" style="background:var(--bad);border-color:var(--bad)">${esc(botonSi)}</button>`);
+  $("#cfOk").onclick = () => { cerrarHoja(); alAceptar(); };
+}
 
 pintar();
 </script>
