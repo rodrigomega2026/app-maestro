@@ -12,6 +12,8 @@ import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -34,6 +36,8 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private WebViewAssetLoader cargador;
+    private static final int PEDIR_ARCHIVO = 7;
+    private ValueCallback<Uri[]> esperaArchivo;   // para "Adjuntar logo"
 
     @Override
     protected void onCreate(Bundle estado) {
@@ -75,6 +79,26 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Permite elegir una imagen de la galería (botón "Adjuntar logo")
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (esperaArchivo != null) esperaArchivo.onReceiveValue(null);
+                esperaArchivo = callback;
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("image/*");
+                try {
+                    startActivityForResult(Intent.createChooser(i, "Elegir logo"), PEDIR_ARCHIVO);
+                } catch (ActivityNotFoundException e) {
+                    esperaArchivo = null;
+                    Toast.makeText(MainActivity.this, "No hay una app para elegir imágenes.", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+                return true;
+            }
+        });
+
         if (estado != null) web.restoreState(estado);
         else web.loadUrl(INICIO);
     }
@@ -83,6 +107,18 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle salida) {
         super.onSaveInstanceState(salida);
         web.saveState(salida);
+    }
+
+    @Override
+    protected void onActivityResult(int pedido, int resultado, Intent datos) {
+        if (pedido == PEDIR_ARCHIVO) {
+            if (esperaArchivo != null) {
+                esperaArchivo.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultado, datos));
+                esperaArchivo = null;
+            }
+            return;
+        }
+        super.onActivityResult(pedido, resultado, datos);
     }
 
     /** Lo que la página puede pedirle al teléfono. */
