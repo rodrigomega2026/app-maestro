@@ -17,8 +17,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
+      # Los servidores de GitHub ya traen Android instalado: no se descarga nada extra
+      # (antes este paso fallaba a veces al bajar herramientas desde Google).
       - name: Compilar
         run: |
           chmod +x gradlew
