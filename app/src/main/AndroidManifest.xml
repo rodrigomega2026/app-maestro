@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Solo para abrir WhatsApp con el presupuesto. La app funciona sin internet. -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Sin permiso de internet: la app funciona solo en el teléfono y no se conecta a nada.
+         WhatsApp, compartir y "Revisar precio" abren otras apps; no necesitan este permiso. -->
 
     <queries>
         <intent>
