@@ -124,6 +124,14 @@ textarea.inp{min-height:70px;resize:vertical}
 .preciosbtn{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:2px solid var(--yellow);background:#FFFBEA;cursor:pointer}
 .preciosbtn .e{font-size:1.5rem}.preciosbtn .fl{font-size:1.6rem;font-weight:800}.preciosbtn .small{color:var(--muted)}
 .sodi{display:inline-block;margin-top:4px;padding:4px 10px;border-radius:8px;background:#E3ECFF;color:#1D4ED8;font-weight:700;font-size:.82rem;text-decoration:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:700;font-size:.8rem;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.logobox{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.logoprev{width:88px;height:64px;border:1px dashed var(--line);border-radius:10px;display:grid;place-items:center;background:var(--soft);overflow:hidden;flex:0 0 88px}
+.logoprev img{max-width:100%;max-height:100%;object-fit:contain}
+.doc .lg{display:block;max-height:70px;max-width:180px;object-fit:contain;margin-bottom:8px}
 .aviso{background:var(--warn-soft);color:#6B4300;border-radius:10px;padding:10px 12px;font-size:.84rem}
 @media (max-width:420px){.two{grid-template-columns:1fr}.mrow{grid-template-columns:minmax(0,1fr) 80px 84px}}
 @media print{
@@ -218,6 +226,36 @@ const MATERIALES = {
   tablero:   {n:"Tablero eléctrico con automáticos y diferencial", u:"un", p:65000, f:"estimado"},
   ptoagua:   {n:"Materiales por punto de agua (PPR, fittings)", u:"un", p:12000, f:"estimado"},
   pvc110:    {n:"Tubo PVC sanitario 110 mm x 6 m", u:"un", p:14000, f:"estimado"},
+  // --- agregados con la lista ampliada de mano de obra (estimados) ---
+  estabil:   {n:"Estabilizado / material de relleno", u:"m³", p:22000, f:"estimado"},
+  tapacam:   {n:"Tapa cámara de inspección", u:"un", p:18000, f:"estimado"},
+  cornisa:   {n:"Cornisa poliestireno x 2,4 m", u:"un", p:2500, f:"estimado"},
+  papel:     {n:"Papel mural", u:"m²", p:5000, f:"estimado"},
+  pegpapel:  {n:"Adhesivo papel mural", u:"un", p:6000, f:"estimado"},
+  alfombra:  {n:"Alfombra muro a muro", u:"m²", p:9000, f:"estimado"},
+  entablado: {n:"Piso de madera / entablado", u:"m²", p:22000, f:"estimado"},
+  vitrif:    {n:"Vitrificante de pisos (galón)", u:"gl", p:32000, f:"estimado"},
+  machi:     {n:"Machihembrado pino 1x4\"", u:"m²", p:9500, f:"estimado"},
+  puertaext: {n:"Puerta exterior / principal", u:"un", p:110000, f:"estimado"},
+  chapa:     {n:"Chapa / cerradura", u:"un", p:18000, f:"estimado"},
+  kitcielo:  {n:"Cielo americano (palmeta + perfilería)", u:"m²", p:9000, f:"estimado"},
+  anticorr:  {n:"Anticorrosivo (galón)", u:"gl", p:22000, f:"estimado"},
+  esmaltesint:{n:"Esmalte sintético (galón)", u:"gl", p:24000, f:"estimado"},
+  ductocamp: {n:"Ducto y accesorios para campana", u:"un", p:12000, f:"estimado"},
+  flexgas:   {n:"Flexible y llave de gas certificada", u:"un", p:9000, f:"estimado"},
+  circuito:  {n:"Materiales circuito eléctrico (cable, ducto, automático)", u:"un", p:45000, f:"estimado"},
+  barratierra:{n:"Barra Cu, cable y cámara puesta a tierra", u:"un", p:35000, f:"estimado"},
+  ppr:       {n:"Tubo PPR 20 mm x 4 m + fittings", u:"un", p:7500, f:"estimado"},
+  llavepaso: {n:"Llave de paso", u:"un", p:12000, f:"estimado"},
+  kitsplit:  {n:"Kit instalación split (cañería cobre, soportes)", u:"un", p:45000, f:"estimado"},
+  cablecam:  {n:"Cable, conectores y fijaciones cámara", u:"un", p:12000, f:"estimado"},
+  forro:     {n:"Forro / cumbrera zinc x 2 m", u:"un", p:7500, f:"estimado"},
+  mallacerco:{n:"Malla de cerco (bizcocho / galvanizada)", u:"m", p:4500, f:"estimado"},
+  deck:      {n:"Tabla de deck pino impregnado", u:"m²", p:18000, f:"estimado"},
+  tornideck: {n:"Tornillos deck inoxidable (caja)", u:"caja", p:9000, f:"estimado"},
+  pasto:     {n:"Pasto en rollo", u:"m²", p:3500, f:"estimado"},
+  tierra:    {n:"Tierra de hoja", u:"m³", p:25000, f:"estimado"},
+  tarugos:   {n:"Tarugos y tornillos (bolsa)", u:"un", p:3000, f:"estimado"},
 };
 // Unidades que se compran enteras (se redondean hacia arriba en la lista de compra)
 const ENTERAS = new Set(["saco","un","gl","caja","rollo","paq","tineta"]);
@@ -339,6 +377,126 @@ const PARTIDAS = [
     mats:[["pvc110",0.2]]},
   {id:"calefont", g:"Instalaciones", e:"🔥", n:"Instalación de calefont", u:"un", mo:[40000,65000], rend:[1,2], obs:"Artefacto lo pone el cliente", tabla:0,
     mats:[["flexibles",2]]},
+
+  /* ===== LISTA AMPLIADA DE MANO DE OBRA (valores estimados: revísalos en "Precios") ===== */
+  // Jornadas y servicios
+  {id:"jmaestro", g:"Jornadas y servicios", e:"👷", n:"Jornada de maestro", u:"día", mo:[45000,65000], rend:[1,1], obs:"Día de trabajo de 8 horas", tabla:0, mats:[]},
+  {id:"jayud", g:"Jornadas y servicios", e:"🧑‍🔧", n:"Jornada de ayudante", u:"día", mo:[30000,40000], rend:[1,1], obs:"Día de trabajo de 8 horas", tabla:0, mats:[]},
+  {id:"hmaestro", g:"Jornadas y servicios", e:"⏱️", n:"Hora de maestro", u:"hora", mo:[7000,10000], rend:[8,8], obs:"Trabajos chicos o por hora", tabla:0, mats:[]},
+  {id:"visita", g:"Jornadas y servicios", e:"📋", n:"Visita técnica / diagnóstico", u:"un", mo:[15000,30000], rend:[4,6], obs:"Se puede descontar si acepta el trabajo", tabla:0, mats:[]},
+  {id:"escombro", g:"Jornadas y servicios", e:"🪣", n:"Retiro de escombros (carga manual)", u:"m³", mo:[15000,25000], rend:[4,6], obs:"Ensacado y acarreo hasta el camión", tabla:0, mats:[]},
+  {id:"camion", g:"Jornadas y servicios", e:"🚛", n:"Retiro de escombros en camión (viaje)", u:"un", mo:[60000,100000], rend:null, obs:"Incluye botadero autorizado", tabla:0, mats:[]},
+  {id:"aseo", g:"Jornadas y servicios", e:"🧹", n:"Aseo final de obra", u:"m²", mo:[1000,2000], rend:[60,100], obs:"", tabla:0, mats:[]},
+  {id:"hidrolav", g:"Jornadas y servicios", e:"💨", n:"Hidrolavado (fachada, patio, techo)", u:"m²", mo:[1500,2500], rend:[60,100], obs:"", tabla:0, mats:[]},
+
+  // Obra gruesa (lista ampliada)
+  {id:"trazado", g:"Obra gruesa", e:"📐", n:"Trazado y niveleta", u:"m²", mo:[1500,2500], rend:[50,80], obs:"Por m² de superficie a construir", tabla:0,
+    mats:[["pino23",0.1],["clavos",0.02]]},
+  {id:"relleno", g:"Obra gruesa", e:"🚜", n:"Relleno y compactación", u:"m³", mo:[12000,18000], rend:[3,5], obs:"Con placa compactadora", tabla:0,
+    mats:[["estabil",1.2]]},
+  {id:"sobrecim", g:"Obra gruesa", e:"🏗️", n:"Sobrecimiento de hormigón", u:"m³", mo:[75000,100000], rend:[1,1.5], obs:"Incluye moldaje y enfierradura", tabla:0,
+    mats:[["cemento",8],["arena",0.5],["gravilla",0.8],["fierro",25],["alambre",0.5],["terciado",0.3]]},
+  {id:"cadenas", g:"Obra gruesa", e:"🔩", n:"Pilares y cadenas de hormigón", u:"m", mo:[12000,18000], rend:[6,10], obs:"Por metro lineal, 20x20 cm aprox.", tabla:0,
+    mats:[["cemento",0.6],["arena",0.03],["gravilla",0.05],["fierro",4],["alambre",0.1],["terciado",0.03]]},
+  {id:"picado", g:"Obra gruesa", e:"🔨", n:"Picado de muro o losa", u:"m²", mo:[6000,10000], rend:[8,12], obs:"Para pasar ductos o retirar estuco", tabla:0, mats:[]},
+  {id:"camara", g:"Obra gruesa", e:"⬛", n:"Cámara de inspección", u:"un", mo:[45000,70000], rend:[1,2], obs:"Albañilería con tapa", tabla:0,
+    mats:[["ladrillo",40],["cemento",3],["arena",0.1],["tapacam",1]]},
+
+  // Carpintería
+  {id:"tabmadera", g:"Carpintería", e:"🪚", n:"Tabiquería estructural de madera", u:"m²", mo:[9000,14000], rend:[10,15], obs:"Pie derecho pino 2x3\" a 60 cm", tabla:0,
+    mats:[["pino23",2.2],["clavos",0.15]]},
+  {id:"machi", g:"Carpintería", e:"🪵", n:"Revestimiento machihembrado", u:"m²", mo:[9000,14000], rend:[10,15], obs:"Muro o cielo", tabla:0,
+    mats:[["machi",1.1],["clavos",0.05]]},
+  {id:"entablado", g:"Carpintería", e:"🟫", n:"Piso de madera (entablado)", u:"m²", mo:[12000,18000], rend:[8,12], obs:"", tabla:0,
+    mats:[["entablado",1.08],["clavos",0.1]]},
+  {id:"vitrif", g:"Carpintería", e:"✨", n:"Pulido y vitrificado de piso", u:"m²", mo:[7000,11000], rend:[15,25], obs:"Tres manos", tabla:0,
+    mats:[["vitrif",0.1]]},
+  {id:"puertaext", g:"Carpintería", e:"🚪", n:"Instalación puerta exterior / principal", u:"un", mo:[55000,85000], rend:[1,1.5], obs:"Con marco y quincallería", tabla:0,
+    mats:[["puertaext",1],["marco",1],["quincall",1]]},
+  {id:"chapa", g:"Carpintería", e:"🔑", n:"Cambio de chapa / cerradura", u:"un", mo:[10000,18000], rend:[6,10], obs:"", tabla:0,
+    mats:[["chapa",1]]},
+  {id:"ajpuerta", g:"Carpintería", e:"🔧", n:"Ajuste de puerta / ventana", u:"un", mo:[8000,15000], rend:[6,10], obs:"Cepillado, bisagras, burletes", tabla:0, mats:[]},
+  {id:"closet", g:"Carpintería", e:"🗄️", n:"Instalación de clóset", u:"m", mo:[35000,55000], rend:[1.5,3], obs:"Por metro lineal; mueble lo pone el cliente", tabla:0,
+    mats:[["tarugos",1]]},
+  {id:"mueble", g:"Carpintería", e:"🪑", n:"Armado de muebles", u:"un", mo:[12000,25000], rend:[3,6], obs:"Muebles en caja (cliente)", tabla:0, mats:[]},
+  {id:"deck", g:"Carpintería", e:"🌲", n:"Terraza / deck de madera", u:"m²", mo:[18000,28000], rend:[4,6], obs:"Estructura y tablas impregnadas", tabla:0,
+    mats:[["deck",1.1],["pino24",1.5],["tornideck",0.12],["poste",0.3],["cemento",0.3]]},
+  {id:"pergola", g:"Carpintería", e:"⛱️", n:"Pérgola de madera", u:"m²", mo:[15000,25000], rend:[3,5], obs:"Sin cubierta", tabla:0,
+    mats:[["poste",0.4],["pino24",2],["clavos",0.2],["cemento",0.3]]},
+  {id:"escalera", g:"Carpintería", e:"🪜", n:"Escalera de madera", u:"un", mo:[150000,250000], rend:[0.3,0.5], obs:"Materiales según diseño (agrégalos en Detalle)", tabla:0, mats:[]},
+
+  // Terminaciones (lista ampliada)
+  {id:"pintcielo", g:"Terminaciones", e:"🎨", n:"Pintura de cielo", u:"m²", mo:[4000,6500], rend:[20,30], obs:"Dos manos", tabla:0,
+    mats:[["latex",0.05]]},
+  {id:"pintmetal", g:"Terminaciones", e:"🖌️", n:"Pintura de reja o metal", u:"m²", mo:[6000,9000], rend:[12,18], obs:"Anticorrosivo + esmalte", tabla:0,
+    mats:[["anticorr",0.06],["esmaltesint",0.06]]},
+  {id:"papel", g:"Terminaciones", e:"🧻", n:"Instalación papel mural", u:"m²", mo:[4000,6500], rend:[15,25], obs:"", tabla:0,
+    mats:[["papel",1.1],["pegpapel",0.05]]},
+  {id:"alfombra", g:"Terminaciones", e:"🟪", n:"Instalación de alfombra", u:"m²", mo:[3500,6000], rend:[25,40], obs:"", tabla:0,
+    mats:[["alfombra",1.08]]},
+  {id:"cornisa", g:"Terminaciones", e:"📏", n:"Instalación de cornisas", u:"m", mo:[1500,3000], rend:[25,40], obs:"Por metro lineal", tabla:0,
+    mats:[["cornisa",0.45],["pasta",0.02]]},
+  {id:"cieloame", g:"Terminaciones", e:"🔲", n:"Cielo americano", u:"m²", mo:[9000,13000], rend:[12,20], obs:"Palmetas 60x60", tabla:0,
+    mats:[["kitcielo",1.05]]},
+  {id:"sellado", g:"Terminaciones", e:"🧴", n:"Sellado con silicona (ventanas, baños)", u:"m", mo:[1500,2500], rend:[30,50], obs:"Por metro lineal", tabla:0,
+    mats:[["silicona",0.1]]},
+  {id:"cortinas", g:"Terminaciones", e:"🪟", n:"Instalación de cortinas o rieles", u:"un", mo:[8000,15000], rend:[6,10], obs:"Cortina la pone el cliente", tabla:0,
+    mats:[["tarugos",1]]},
+  {id:"repvolca", g:"Terminaciones", e:"🩹", n:"Reparación de volcanita (parche)", u:"un", mo:[12000,20000], rend:[4,6], obs:"Incluye empaste", tabla:0,
+    mats:[["volcanita",0.2],["pasta",0.1]]},
+
+  // Baño y cocina (lista ampliada)
+  {id:"meson", g:"Baño y cocina", e:"🍽️", n:"Instalación de mesón / cubierta", u:"m", mo:[18000,30000], rend:[3,5], obs:"Cubierta la pone el cliente", tabla:0,
+    mats:[["silicona",0.3]]},
+  {id:"campana", g:"Baño y cocina", e:"🌬️", n:"Instalación de campana", u:"un", mo:[25000,40000], rend:[2,4], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["ductocamp",1]]},
+  {id:"encimera", g:"Baño y cocina", e:"🔥", n:"Instalación de encimera / cocina", u:"un", mo:[25000,40000], rend:[3,4], obs:"Conexión a gas requiere instalador SEC", tabla:0,
+    mats:[["flexgas",1]]},
+  {id:"mampara", g:"Baño y cocina", e:"🚿", n:"Instalación de mampara de ducha", u:"un", mo:[30000,50000], rend:[1.5,3], obs:"Mampara la pone el cliente", tabla:0,
+    mats:[["silicona",1],["tarugos",1]]},
+  {id:"accbano", g:"Baño y cocina", e:"🪞", n:"Instalación accesorios de baño (set)", u:"un", mo:[12000,20000], rend:[4,6], obs:"Espejo, toallero, portarrollo", tabla:0,
+    mats:[["tarugos",1]]},
+  {id:"termo", g:"Baño y cocina", e:"♨️", n:"Instalación de termo eléctrico", u:"un", mo:[35000,55000], rend:[1.5,3], obs:"Artefacto lo pone el cliente", tabla:0,
+    mats:[["flexibles",2],["llavepaso",1]]},
+  {id:"fragueo", g:"Baño y cocina", e:"🧽", n:"Cambio de fragüe", u:"m²", mo:[5000,8000], rend:[8,12], obs:"Retiro y fragüe nuevo", tabla:0,
+    mats:[["frague",0.4]]},
+
+  // Instalaciones (lista ampliada)
+  {id:"lampara", g:"Instalaciones", e:"💡", n:"Instalación de lámpara / foco", u:"un", mo:[10000,18000], rend:[8,12], obs:"Sobre punto existente", tabla:0, mats:[]},
+  {id:"circuito", g:"Instalaciones", e:"🔌", n:"Circuito eléctrico nuevo", u:"un", mo:[45000,70000], rend:[1,2], obs:"Desde el tablero", tabla:0,
+    mats:[["circuito",1]]},
+  {id:"tierra", g:"Instalaciones", e:"⏚", n:"Puesta a tierra", u:"un", mo:[60000,90000], rend:[1,1], obs:"Con medición", tabla:0,
+    mats:[["barratierra",1]]},
+  {id:"extractor", g:"Instalaciones", e:"🌀", n:"Instalación extractor de baño", u:"un", mo:[20000,30000], rend:[3,4], obs:"Artefacto lo pone el cliente", tabla:0, mats:[]},
+  {id:"redagua", g:"Instalaciones", e:"🚰", n:"Red de agua potable (PPR)", u:"m", mo:[7000,11000], rend:[10,15], obs:"Por metro lineal", tabla:0,
+    mats:[["ppr",0.3]]},
+  {id:"llavepaso", g:"Instalaciones", e:"🔧", n:"Cambio de llave de paso", u:"un", mo:[15000,25000], rend:[4,6], obs:"", tabla:0,
+    mats:[["llavepaso",1]]},
+  {id:"destape", g:"Instalaciones", e:"🪠", n:"Destape de cañería / desagüe", u:"un", mo:[25000,45000], rend:[3,5], obs:"", tabla:0, mats:[]},
+  {id:"filtra", g:"Instalaciones", e:"💧", n:"Reparación de filtración", u:"un", mo:[15000,25000], rend:[4,6], obs:"Llave, flexible o sifón", tabla:0,
+    mats:[["flexibles",1],["silicona",0.5]]},
+  {id:"bomba", g:"Instalaciones", e:"⚙️", n:"Instalación de bomba / hidropack", u:"un", mo:[60000,100000], rend:[1,1], obs:"Equipo lo pone el cliente", tabla:0,
+    mats:[["flexibles",2],["llavepaso",1]]},
+  {id:"split", g:"Instalaciones", e:"❄️", n:"Instalación aire acondicionado split", u:"un", mo:[120000,180000], rend:[1,1], obs:"Equipo lo pone el cliente", tabla:0,
+    mats:[["kitsplit",1]]},
+  {id:"camaraseg", g:"Instalaciones", e:"📹", n:"Instalación cámara de seguridad", u:"un", mo:[20000,35000], rend:[3,5], obs:"Cámara la pone el cliente", tabla:0,
+    mats:[["cablecam",1]]},
+
+  // Techo y exterior (lista ampliada)
+  {id:"repzinc", g:"Techo y exterior", e:"🏚️", n:"Cambio de planchas de zinc (reparación)", u:"m²", mo:[7000,11000], rend:[15,25], obs:"Sobre estructura existente", tabla:0,
+    mats:[["zinc",0.4],["clavotecho",6]]},
+  {id:"hojalat", g:"Techo y exterior", e:"📎", n:"Hojalatería (forros y cumbreras)", u:"m", mo:[6000,10000], rend:[10,15], obs:"Por metro lineal", tabla:0,
+    mats:[["forro",0.55],["clavotecho",4],["silicona",0.1]]},
+  {id:"limptecho", g:"Techo y exterior", e:"🍂", n:"Limpieza de techo y canaletas", u:"m", mo:[1500,3000], rend:[40,60], obs:"Por metro lineal de canaleta", tabla:0, mats:[]},
+  {id:"cercomalla", g:"Techo y exterior", e:"🚧", n:"Cerco de malla", u:"m", mo:[8000,13000], rend:[8,12], obs:"Con postes cada 2,5 m", tabla:0,
+    mats:[["poste",0.4],["mallacerco",1.05],["alambre",0.1],["cemento",0.3]]},
+  {id:"reja", g:"Techo y exterior", e:"🔲", n:"Instalación de reja metálica", u:"m", mo:[15000,25000], rend:[3,5], obs:"Reja la pone el cliente", tabla:0,
+    mats:[["cemento",0.4]]},
+  {id:"porton", g:"Techo y exterior", e:"🚪", n:"Instalación de portón", u:"un", mo:[60000,120000], rend:[0.5,1], obs:"Portón lo pone el cliente", tabla:0,
+    mats:[["cemento",2],["arena",0.05]]},
+  {id:"pasto", g:"Techo y exterior", e:"🌱", n:"Instalación pasto en rollo", u:"m²", mo:[2000,3500], rend:[50,80], obs:"Con tierra de hoja", tabla:0,
+    mats:[["pasto",1.05],["tierra",0.05]]},
+  {id:"despeje", g:"Techo y exterior", e:"🌿", n:"Despeje y limpieza de terreno", u:"m²", mo:[800,1500], rend:[80,150], obs:"Maleza y basura", tabla:0, mats:[]},
 ];
 
 // Plantillas: preguntan medidas y arman las partidas
@@ -388,6 +546,12 @@ const PLANTILLAS = [
   {id:"tejas", e:"🏡", n:"Techo teja asfáltica", d:"Estructura, OSB y teja",
     campos:[["largo","Largo (m)",8],["ancho","Ancho (m)",6]],
     arma:v=>{const a=v.largo*v.ancho*1.15;return [["estrtecho",a],["tejaasf",a],["canaletas",2*v.largo]]}},
+  {id:"terraza", e:"🌲", n:"Terraza de madera", d:"Deck, barniz y aseo",
+    campos:[["largo","Largo (m)",4],["ancho","Ancho (m)",3]],
+    arma:v=>{const a=v.largo*v.ancho;return [["deck",a],["barniz",a],["aseo",a]]}},
+  {id:"jornadas", e:"👷", n:"Por jornadas", d:"Días de maestro y ayudante",
+    campos:[["maestro","Días de maestro",5],["ayudante","Días de ayudante",5]],
+    arma:v=>[["jmaestro",v.maestro],["jayud",v.ayudante]]},
 ];
 
 /* =====================================================================
@@ -401,7 +565,9 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clp = n => "$" + Math.round(n || 0).toLocaleString("es-CL");
 const nf = (n, d=2) => (Math.round((+n || 0) * 10**d) / 10**d).toLocaleString("es-CL", {maximumFractionDigits:d});
-const hoy = () => new Date().toISOString().slice(0,10);
+// Fecha local del teléfono (no la de Londres/UTC)
+const isoLocal = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const hoy = () => isoLocal(new Date());
 const fecha = s => { const [a,m,d] = String(s||hoy()).split("-"); return `${d}-${m}-${a}`; };
 const leerNum = v => { const x = parseFloat(String(v).replace(/\./g,"").replace(",", ".")); return isFinite(x) ? x : 0; };
 const leerDec = v => { let t = String(v).trim().replace(/\s/g, "");
@@ -574,6 +740,7 @@ function vPres() {
         <div class="field"><label for="f_ct">Teléfono</label><input class="inp" id="f_ct" inputmode="tel" value="${esc(p.cliente.tel)}" placeholder="+56 9 …"></div>
       </div>
       <div class="field" style="margin:0"><label for="f_cd">Dirección</label><input class="inp" id="f_cd" value="${esc(p.cliente.dir)}" placeholder="Calle, número, comuna"></div>
+      ${logoPresHtml(p)}
     </div>
 
     <div class="card">
@@ -611,6 +778,9 @@ function vPres() {
   enlaza("#f_ip", v => { p.imprevistos = leerDec(v); refrescar(); });
   enlaza("#f_ds", v => { p.descuento = leerNum(v); refrescar(); });
   $("#f_im").onchange = e => { p.incluirMat = e.target.checked; guardar(); vPres(); };
+  if ($("#f_lg")) $("#f_lg").onchange = e => { p.conLogo = e.target.checked; p.mod = Date.now(); guardar(); };
+  $("#lgCambiar").onclick = () => elegirLogo(() => { p.conLogo = true; guardar(); vPres(); });
+  if ($("#lgQuitar")) $("#lgQuitar").onclick = () => quitarLogo(vPres);
   enlazarItems(p);
 }
 function totalesHtml(c) {
@@ -689,15 +859,20 @@ function cambiarNivel(n) {
 function agregarPartida() {
   const grupos = [...new Set(PARTIDAS.map(x => x.g))];
   hoja("Agregar partida", `
-    <input class="inp" id="bus" placeholder="Buscar (ej: pintura, baño, zinc)" autocomplete="off">
+    <input class="inp" id="bus" placeholder="Buscar (ej: pintura, baño, zinc, jornada)" autocomplete="off">
+    <div class="chips" id="chips"><button class="chip on" data-cg="">Todos (${PARTIDAS.length})</button>${grupos.map(g => `<button class="chip" data-cg="${esc(g)}">${esc(g)}</button>`).join("")}</div>
     <div id="catl">${grupos.map(g => `<div class="lbl grp" data-g="${esc(g)}">${esc(g)}</div>` + PARTIDAS.filter(x => x.g === g).map(x => { const pp = part(x.id); return `
-      <button class="cat" data-pid="${x.id}" data-txt="${esc((x.n + " " + x.g + " " + x.obs).toLowerCase())}"><span class="ic">${x.e}</span>
+      <button class="cat" data-pid="${x.id}" data-g="${esc(x.g)}" data-txt="${esc((x.n + " " + x.g + " " + x.obs).toLowerCase())}"><span class="ic">${x.e}</span>
         <span><b>${esc(x.n)}</b>${x.tabla ? "" : `<span class="badge">estimado</span>`}<br><span class="small muted">${esc(x.obs || "por " + x.u)}</span></span>
         <span class="p num">${clp(pp.mo[0])} – ${clp(pp.mo[1])}<br>por ${esc(x.u)}</span></button>`; }).join("")).join("")}</div>`,
     `<button class="btn full" onclick="cerrarHoja()">Cerrar</button>`);
-  $("#bus").oninput = e => { const q = e.target.value.trim().toLowerCase();
-    document.querySelectorAll("#catl .cat").forEach(b => b.hidden = q && !b.dataset.txt.includes(q));
+  let grupo = "";
+  const filtra = () => { const q = $("#bus").value.trim().toLowerCase();
+    document.querySelectorAll("#catl .cat").forEach(b => b.hidden = (q && !b.dataset.txt.includes(q)) || (grupo && b.dataset.g !== grupo));
     document.querySelectorAll("#catl .grp").forEach(g => { let s = g.nextElementSibling, ver = false; while (s && s.classList.contains("cat")) { if (!s.hidden) ver = true; s = s.nextElementSibling; } g.hidden = !ver; }); };
+  $("#bus").oninput = filtra;
+  document.querySelectorAll("#chips .chip").forEach(c => c.onclick = () => { grupo = c.dataset.cg;
+    document.querySelectorAll("#chips .chip").forEach(x => x.classList.toggle("on", x === c)); filtra(); });
   document.querySelectorAll("#catl .cat").forEach(b => b.onclick = () => pedirCantidad(b.dataset.pid));
 }
 function pedirCantidad(pid) {
@@ -749,10 +924,10 @@ function vDoc() {
     <div class="row noprint"><button class="btn sm" style="flex:1" onclick="compartirTexto()">Compartir texto…</button><button class="btn sm" style="flex:1" onclick="compartirLista()">Enviar lista de materiales</button></div>
     <article class="doc">
       <div class="dh">
-        <div><span class="yb">PRESUPUESTO</span><h2>${esc(d.nombre || "Tu nombre")}</h2>
+        <div>${d.logo && p.conLogo !== false ? `<img class="lg" src="${esc(d.logo)}" alt="Logo">` : ""}<span class="yb">PRESUPUESTO</span><h2>${esc(d.nombre || "Tu nombre")}</h2>
           <div>${esc(d.oficio || "")}</div>
           <div class="small">${[d.tel && "Tel: " + esc(d.tel), d.correo && esc(d.correo), d.rut && "RUT " + esc(d.rut), d.comuna && esc(d.comuna)].filter(Boolean).join(" · ")}</div></div>
-        <div style="text-align:right"><b>N° ${String(p.num).padStart(3,"0")}</b><br><span class="small">Fecha: ${fecha(p.fecha)}<br>Válido hasta: ${fecha(venc.toISOString().slice(0,10))}</span></div>
+        <div style="text-align:right"><b>N° ${String(p.num).padStart(3,"0")}</b><br><span class="small">Fecha: ${fecha(p.fecha)}<br>Válido hasta: ${fecha(isoLocal(venc))}</span></div>
       </div>
       <div><b>Cliente:</b> ${esc(p.cliente.nombre || "—")}${p.cliente.tel ? " · " + esc(p.cliente.tel) : ""}<br>
         ${p.cliente.dir ? `<b>Dirección:</b> ${esc(p.cliente.dir)}<br>` : ""}<b>Trabajo:</b> ${esc(p.titulo || "—")}</div>
@@ -940,6 +1115,13 @@ function vDatos() {
       <div class="field"><label for="d_v">Validez del presupuesto (días)</label><input class="inp" id="d_v" inputmode="numeric" value="${esc(d.validez)}"></div>
       <div class="field" style="margin:0"><label for="d_cd">Condiciones (van al final de cada presupuesto)</label><textarea class="inp" id="d_cd" rows="4">${esc(d.condiciones)}</textarea></div>
     </div>
+    <div class="card"><h2>Logo (opcional)</h2>
+      <div class="logobox"><span class="logoprev">${d.logo ? `<img src="${esc(d.logo)}" alt="Tu logo">` : `<span class="small muted">Sin logo</span>`}</span>
+        <div style="display:grid;gap:6px;flex:1;min-width:150px">
+          <div class="row"><button class="btn sm" id="dLogo">${d.logo ? "Cambiar logo" : "📎 Adjuntar logo"}</button>${d.logo ? `<button class="btn sm red" id="dLogoQ">Quitar</button>` : ""}</div>
+          <span class="small muted">Se muestra arriba en tus presupuestos y en el PDF. En cada presupuesto puedes ocultarlo.</span>
+        </div></div>
+    </div>
     <div class="card"><h2>Respaldo</h2>
       <p class="small muted" style="margin:0 0 10px">Tus presupuestos se guardan solo en este teléfono. Envía una copia de respaldo a tu correo o WhatsApp de vez en cuando.</p>
       <div class="row"><button class="btn sm" onclick="respaldar()">Enviar copia de respaldo</button><button class="btn sm" onclick="restaurarRespaldo()">Restaurar desde copia</button></div>
@@ -947,6 +1129,8 @@ function vDatos() {
     <button class="btn y full" onclick="history.back()">Listo</button>`;
   const m = {d_n:"nombre", d_o:"oficio", d_t:"tel", d_c:"correo", d_r:"rut", d_co:"comuna", d_v:"validez", d_cd:"condiciones"};
   for (const [id, k] of Object.entries(m)) $("#" + id).addEventListener("input", e => { d[k] = k === "validez" ? leerNum(e.target.value) : e.target.value; guardar(); });
+  $("#dLogo").onclick = () => elegirLogo(vDatos);
+  if ($("#dLogoQ")) $("#dLogoQ").onclick = () => quitarLogo(vDatos);
 }
 function respaldar() { compartir("RESPALDO-MAESTRO:" + btoa(unescape(encodeURIComponent(JSON.stringify(S))))); }
 function restaurarRespaldo() {
@@ -958,6 +1142,48 @@ function restaurarRespaldo() {
       const o = JSON.parse(decodeURIComponent(escape(atob(t)))); if (!o || !Array.isArray(o.pres)) throw 0;
       S = o; guardar(); cargar(); cerrarHoja(); ir("inicio"); toast("Respaldo restaurado");
     } catch (e) { toast("El texto no es un respaldo válido"); } };
+}
+
+/* ---------- LOGO (opcional) ---------- */
+// Se achica la imagen para que no ocupe mucho espacio en el teléfono
+function elegirLogo(alTerminar) {
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    if (!/^image\//.test(f.type)) return toast("Elige una imagen (JPG o PNG)");
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 400, k = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+        const cx = cv.getContext("2d");
+        const png = /png|gif|webp|svg/.test(f.type);
+        if (!png) { cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); }
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        S.datos.logo = png ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.85);
+        guardar(); toast("Logo guardado"); if (alTerminar) alTerminar();
+      };
+      img.onerror = () => toast("No se pudo leer la imagen");
+      img.src = lector.result;
+    };
+    lector.readAsDataURL(f);
+  };
+  inp.click();
+}
+function quitarLogo(alTerminar) {
+  confirmar("¿Quitar tu logo? Dejará de aparecer en todos los presupuestos.", "Quitar", () => { delete S.datos.logo; guardar(); toast("Logo quitado"); if (alTerminar) alTerminar(); });
+}
+// Bloque de logo dentro del presupuesto: se puede mostrar u ocultar en cada uno
+function logoPresHtml(p) {
+  const l = S.datos.logo;
+  return `<div class="field" style="margin:10px 0 0"><label>Logo (opcional)</label>
+    <div class="logobox"><span class="logoprev">${l ? `<img src="${esc(l)}" alt="Tu logo">` : `<span class="small muted">Sin logo</span>`}</span>
+      <div style="display:grid;gap:6px;flex:1;min-width:150px">
+        ${l ? `<label class="switch small"><input type="checkbox" id="f_lg" ${p.conLogo !== false ? "checked" : ""}> Mostrar logo en este presupuesto</label>
+          <div class="row"><button class="btn sm" id="lgCambiar">Cambiar</button><button class="btn sm red" id="lgQuitar">Quitar</button></div>`
+        : `<button class="btn sm" id="lgCambiar">📎 Adjuntar logo</button><span class="small muted">Aparece arriba en el presupuesto y el PDF.</span>`}
+      </div></div></div>`;
 }
 
 /* ---------- HOJAS (ventanas) ---------- */
