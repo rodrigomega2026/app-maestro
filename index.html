@@ -691,7 +691,7 @@ function vInicio() {
       <h2>¿Qué trabajo vas a cotizar?</h2>
       <div class="plants">
         ${PLANTILLAS.map(p => `<button class="plant" onclick="pedirPlantilla('${p.id}')"><span class="e">${p.e}</span><b>${esc(p.n)}</b><span>${esc(p.d)}</span></button>`).join("")}
-        <button class="plant" onclick="crear([])"><span class="e">📝</span><b>En blanco</b><span>Elige las partidas tú</span></button>
+        <button class="plant" onclick="crear([])"><span class="e">📝</span><b>En blanco</b><span>Crea tu proyecto</span></button>
       </div>
     </div>
     <div class="row"><span class="lbl">Mis presupuestos (${lista.length})</span></div>
