@@ -699,7 +699,7 @@ function vInicio() {
       <button class="pres" onclick="ir('pres','${p.id}')">
         <span><span class="est ${p.estado}">${estadoTxt(p.estado)}</span><span class="small muted">N° ${String(p.num).padStart(3,"0")} · ${fecha(p.fecha)}</span><br>
           <b>${esc(p.titulo || "Presupuesto")}</b><br><span class="small muted">${esc(p.cliente.nombre || "Sin cliente")}${p.cliente.dir ? " · " + esc(p.cliente.dir) : ""}</span></span>
-        <span class="tot num">${clp(c.total)}<br><span class="small muted" style="font-weight:400">${p.items.length} partida${p.items.length === 1 ? "" : "s"}</span></span>
+        <span class="tot num">${clp(c.total)}<br><span class="small muted" style="font-weight:400">${p.items.length} trabajo${p.items.length === 1 ? "" : "s"}</span></span>
       </button>`; }).join("")
     : `<div class="vacio"><b>Aún no tienes presupuestos</b>Elige un trabajo arriba para hacer el primero.</div>`}`;
 }
