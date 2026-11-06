@@ -931,9 +931,9 @@ function vDoc() {
         <div style="text-align:right"><b>N° ${String(p.num).padStart(3,"0")}</b><br><span class="small">Fecha: ${fecha(p.fecha)}<br>Válido hasta: ${fecha(isoLocal(venc))}</span></div>
       </div>
       <div><b>Cliente:</b> ${esc(p.cliente.nombre || "—")}${p.cliente.tel ? " · " + esc(p.cliente.tel) : ""}<br>
-        ${p.cliente.dir ? `<b>Dirección:</b> ${esc(p.cliente.dir)}<br>` : ""}<b>Trabajo:</b> ${esc(p.titulo || "—")}</div>
+        ${p.cliente.dir ? `<b>Dirección:</b> ${esc(p.cliente.dir)}<br>` : ""}<b>Proyecto:</b> ${esc(p.titulo || "—")}</div>
       <div class="sec">Mano de obra</div>
-      <table><thead><tr><th>Partida</th><th class="r">Cant.</th><th class="r">Valor unit.</th><th class="r">Total</th></tr></thead>
+      <table><thead><tr><th>Trabajo</th><th class="r">Cant.</th><th class="r">Valor unit.</th><th class="r">Total</th></tr></thead>
         <tbody>${p.items.map(it => `<tr><td>${esc(it.n)}</td><td class="r">${nf(it.cant)} ${esc(it.u)}</td><td class="r">${clp(it.mo)}</td><td class="r">${clp(it.mo * it.cant)}</td></tr>`).join("")}</tbody>
         <tfoot><tr><td colspan="3"><b>Total mano de obra</b></td><td class="r"><b>${clp(c.mo)}</b></td></tr></tfoot></table>
       ${c.mats.length ? `<div class="sec">Materiales ${c.incl ? "(incluidos en el precio)" : "(por cuenta del cliente)"}</div>
@@ -960,7 +960,7 @@ function textoPresupuesto(p) {
   l.push(`${d.nombre || ""}${d.oficio ? " – " + d.oficio : ""}${d.tel ? " – " + d.tel : ""}`);
   l.push(`Fecha: ${fecha(p.fecha)}`);
   if (p.cliente.nombre) l.push(`Cliente: ${p.cliente.nombre}`);
-  if (p.titulo) l.push(`Trabajo: ${p.titulo}`);
+  if (p.titulo) l.push(`Proyecto: ${p.titulo}`);
   l.push("");
   l.push("_Mano de obra:_");
   for (const it of p.items) l.push(`• ${it.n}: ${nf(it.cant)} ${it.u} → ${clp(it.mo * it.cant)}`);
