@@ -32,23 +32,24 @@ android {
         }
     }
 
-    // Firma fija: cada APK nuevo se instala encima del anterior sin desinstalar.
+    // Firma para Play Store. La clave NO está en el repositorio: GitHub la entrega
+    // desde los "Secrets" FIRMA_BASE64 y FIRMA_CLAVE (ver .github/workflows/compilar-apk.yml).
     signingConfigs {
         app {
-            storeFile file('clave-app.jks')
-            storePassword 'maestro2026'
-            keyAlias 'maestro'
-            keyPassword 'maestro2026'
+            def archivo = System.getenv('FIRMA_ARCHIVO')
+            if (archivo) {
+                storeFile file(archivo)
+                storePassword System.getenv('FIRMA_CLAVE')
+                keyAlias 'maestro-subida'
+                keyPassword System.getenv('FIRMA_CLAVE')
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.app
-        }
-        debug {
-            signingConfig signingConfigs.app
+            signingConfig System.getenv('FIRMA_ARCHIVO') ? signingConfigs.app : signingConfigs.debug
         }
     }
 
@@ -66,4 +67,6 @@ android {
 dependencies {
     // Sirve la página desde https://appassets.androidplatform.net (guarda los presupuestos en el teléfono)
     implementation 'androidx.webkit:webkit:1.11.0'
+    // Cobro de la suscripción con Google Play
+    implementation 'com.android.billingclient:billing:8.0.0'
 }
