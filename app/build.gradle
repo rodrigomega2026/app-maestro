@@ -15,12 +15,12 @@ preBuild.dependsOn 'copiarPaginaWeb'
 
 android {
     namespace 'cl.maestro.presupuestos'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'cl.maestro.presupuestos'
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         // En GitHub cada compilación sube el número de versión solo
         versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
         versionName '1.0.' + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
