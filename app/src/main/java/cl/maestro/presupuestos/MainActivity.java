@@ -28,6 +28,23 @@ import android.widget.Toast;
 
 import androidx.webkit.WebViewAssetLoader;
 
+import com.android.billingclient.api.AcknowledgePurchaseParams;
+import com.android.billingclient.api.BillingClient;
+import com.android.billingclient.api.BillingClientStateListener;
+import com.android.billingclient.api.BillingFlowParams;
+import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams;
+import com.android.billingclient.api.ProductDetails;
+import com.android.billingclient.api.Purchase;
+import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryPurchasesParams;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Collections;
+import java.util.List;
+
 /**
  * App "Maestro Presupuestos": abre index.html (incluido dentro del APK) y le da acceso a
  * compartir por WhatsApp, enviar texto y guardar el presupuesto como PDF.
@@ -42,6 +59,14 @@ public class MainActivity extends Activity {
     private WebViewAssetLoader cargador;
     private static final int PEDIR_ARCHIVO = 7;
     private ValueCallback<Uri[]> esperaArchivo;   // para "Adjuntar logo"
+
+    // ---- Suscripción (Google Play) ----
+    // ID de la suscripción creada en Play Console > Monetizar > Suscripciones
+    private static final String SUSCRIPCION = "maestro_pro";
+    private BillingClient pagos;
+    private volatile ProductDetails producto;          // planes y precios que entrega Google
+    private volatile boolean suscrito = false;
+    private volatile boolean planesListos = false;
 
     @Override
     protected void onCreate(Bundle estado) {
@@ -122,8 +147,149 @@ public class MainActivity extends Activity {
             }
         });
 
+        iniciarPagos();
+
         if (estado != null) web.restoreState(estado);
         else web.loadUrl(INICIO);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Al volver a la app revisa si la suscripción se renovó o se canceló
+        if (pagos != null && pagos.isReady()) consultarCompras();
+    }
+
+    // ================= SUSCRIPCIÓN =================
+
+    private void iniciarPagos() {
+        pagos = BillingClient.newBuilder(this)
+                .setListener(this::alTerminarCompra)
+                .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+                .enableAutoServiceReconnection()
+                .build();
+        pagos.startConnection(new BillingClientStateListener() {
+            @Override
+            public void onBillingSetupFinished(BillingResult r) {
+                if (r.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                    consultarPlanes();
+                    consultarCompras();
+                } else {
+                    planesListos = true;
+                    avisarPagina();
+                }
+            }
+
+            @Override
+            public void onBillingServiceDisconnected() { }
+        });
+    }
+
+    private void consultarPlanes() {
+        QueryProductDetailsParams p = QueryProductDetailsParams.newBuilder()
+                .setProductList(Collections.singletonList(QueryProductDetailsParams.Product.newBuilder()
+                        .setProductId(SUSCRIPCION)
+                        .setProductType(BillingClient.ProductType.SUBS)
+                        .build()))
+                .build();
+        pagos.queryProductDetailsAsync(p, (r, resultado) -> {
+            List<ProductDetails> lista = resultado.getProductDetailsList();
+            if (lista != null && !lista.isEmpty()) producto = lista.get(0);
+            planesListos = true;
+            avisarPagina();
+        });
+    }
+
+    private void consultarCompras() {
+        pagos.queryPurchasesAsync(QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.SUBS).build(), (r, compras) -> {
+            if (r.getResponseCode() != BillingClient.BillingResponseCode.OK) return;
+            boolean activo = false;
+            for (Purchase c : compras) if (procesarCompra(c)) activo = true;
+            suscrito = activo;
+            avisarPagina();
+        });
+    }
+
+    /** Respuesta de Google después de que el usuario paga (o cancela). */
+    private void alTerminarCompra(BillingResult r, List<Purchase> compras) {
+        int codigo = r.getResponseCode();
+        if (codigo == BillingClient.BillingResponseCode.OK && compras != null) {
+            for (Purchase c : compras) if (procesarCompra(c)) suscrito = true;
+            avisarPagina();
+            if (suscrito) runOnUiThread(() -> Toast.makeText(this, "¡Gracias! Tu suscripción está activa.", Toast.LENGTH_LONG).show());
+        } else if (codigo == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) {
+            consultarCompras();
+        } else if (codigo != BillingClient.BillingResponseCode.USER_CANCELED) {
+            runOnUiThread(() -> Toast.makeText(this, "No se pudo completar el pago. Intenta de nuevo.", Toast.LENGTH_LONG).show());
+        }
+    }
+
+    /** Confirma el pago ante Google (si no se confirma en 3 días, Google lo devuelve). */
+    private boolean procesarCompra(Purchase c) {
+        if (c.getPurchaseState() != Purchase.PurchaseState.PURCHASED) return false;
+        if (!c.getProducts().contains(SUSCRIPCION)) return false;
+        if (!c.isAcknowledged()) {
+            pagos.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder()
+                    .setPurchaseToken(c.getPurchaseToken()).build(), r -> { });
+        }
+        return true;
+    }
+
+    /** Estado de la suscripción en texto JSON para la página. */
+    private String estadoJson() {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("activo", suscrito);
+            o.put("listo", planesListos);
+            JSONArray planes = new JSONArray();
+            ProductDetails pd = producto;
+            if (pd != null && pd.getSubscriptionOfferDetails() != null) {
+                for (ProductDetails.SubscriptionOfferDetails of : pd.getSubscriptionOfferDetails()) {
+                    if (of.getOfferId() != null) continue;   // solo el plan base de cada período
+                    List<ProductDetails.PricingPhase> fases = of.getPricingPhases().getPricingPhaseList();
+                    if (fases.isEmpty()) continue;
+                    ProductDetails.PricingPhase f = fases.get(fases.size() - 1);
+                    JSONObject x = new JSONObject();
+                    x.put("id", of.getBasePlanId());
+                    x.put("precio", f.getFormattedPrice());
+                    x.put("periodo", f.getBillingPeriod());     // P1M = mensual, P1Y = anual
+                    x.put("micros", f.getPriceAmountMicros());
+                    planes.put(x);
+                }
+            }
+            o.put("planes", planes);
+            return o.toString();
+        } catch (Exception e) {
+            return "{\"activo\":false,\"listo\":true,\"planes\":[]}";
+        }
+    }
+
+    private void avisarPagina() {
+        String js = "window.onSuscripcion && window.onSuscripcion(" + JSONObject.quote(estadoJson()) + ")";
+        runOnUiThread(() -> { if (web != null) web.evaluateJavascript(js, null); });
+    }
+
+    private void comprar(String planId) {
+        ProductDetails pd = producto;
+        if (pd == null || pd.getSubscriptionOfferDetails() == null) {
+            Toast.makeText(this, "Los planes aún no cargan. Revisa tu conexión e intenta de nuevo.", Toast.LENGTH_LONG).show();
+            if (pagos != null && pagos.isReady()) consultarPlanes();
+            return;
+        }
+        String token = null;
+        for (ProductDetails.SubscriptionOfferDetails of : pd.getSubscriptionOfferDetails()) {
+            if (planId.equals(of.getBasePlanId()) && of.getOfferId() == null) { token = of.getOfferToken(); break; }
+        }
+        if (token == null) return;
+        BillingFlowParams params = BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(Collections.singletonList(
+                        BillingFlowParams.ProductDetailsParams.newBuilder()
+                                .setProductDetails(pd)
+                                .setOfferToken(token)
+                                .build()))
+                .build();
+        pagos.launchBillingFlow(this, params);
     }
 
     @Override
@@ -158,6 +324,18 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "No hay apps para compartir.", Toast.LENGTH_LONG).show();
                 }
             });
+        }
+
+        /** Estado actual de la suscripción (JSON). */
+        @JavascriptInterface
+        public String estadoSuscripcion() {
+            return estadoJson();
+        }
+
+        /** Abre la ventana de pago de Google Play para el plan elegido (ej. "mensual"). */
+        @JavascriptInterface
+        public void suscribir(String planId) {
+            runOnUiThread(() -> comprar(planId == null ? "" : planId));
         }
 
         @JavascriptInterface
@@ -206,6 +384,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (pagos != null) pagos.endConnection();
         if (web != null) web.destroy();
         super.onDestroy();
     }
