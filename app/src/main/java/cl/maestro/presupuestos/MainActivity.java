@@ -5,12 +5,16 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Insets;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.window.OnBackInvokedDispatcher;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -52,6 +56,25 @@ public class MainActivity extends Activity {
         web = new WebView(this);
         raiz.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(raiz);
+
+        // Android 15+ dibuja la app detrás de la barra de estado y la de navegación.
+        // Se deja un margen del tamaño de esas barras (y del teclado) para que nada quede tapado.
+        raiz.setBackgroundColor(0xFF16181B);
+        if (Build.VERSION.SDK_INT >= 35) {
+            raiz.setOnApplyWindowInsetsListener((v, ins) -> {
+                Insets m = ins.getInsets(WindowInsets.Type.systemBars()
+                        | WindowInsets.Type.displayCutout()
+                        | WindowInsets.Type.ime());
+                v.setPadding(m.left, m.top, m.right, m.bottom);
+                return WindowInsets.CONSUMED;
+            });
+        }
+
+        // Botón/gesto "Atrás" en Android 13 o más nuevo
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::manejarAtras);
+        }
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -166,7 +189,11 @@ public class MainActivity extends Activity {
 
     /** "Atrás": primero cierra ventanas y vuelve de pantalla dentro de la app; en el inicio pregunta antes de salir. */
     @Override
-    public void onBackPressed() {
+    public void onBackPressed() {   // Android 12 o más antiguo
+        manejarAtras();
+    }
+
+    private void manejarAtras() {
         web.evaluateJavascript("(window.atras && window.atras()) ? 'si' : 'no'", valor -> {
             if (valor != null && valor.contains("si")) return;
             new AlertDialog.Builder(this)
