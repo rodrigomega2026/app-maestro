@@ -1,5 +1,6 @@
 # Crea el APK cada vez que subes cambios a GitHub.
-# El APK queda en la pestaña "Actions" > la compilación > "Artifacts".
+# El APK (para instalar en tu teléfono) y el AAB (para subir a Play Store) quedan en
+# la pestaña "Actions" > la compilación > "Artifacts".
 name: Compilar APK
 
 on:
@@ -22,9 +23,15 @@ jobs:
       - name: Compilar
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease bundleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
           name: Maestro-APK
           path: app/build/outputs/apk/release/*.apk
+
+      # Archivo para subir a Google Play Console
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Maestro-AAB-PlayStore
+          path: app/build/outputs/bundle/release/*.aab
