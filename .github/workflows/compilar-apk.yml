@@ -20,7 +20,21 @@ jobs:
 
       # Los servidores de GitHub ya traen Android instalado: no se descarga nada extra
       # (antes este paso fallaba a veces al bajar herramientas desde Google).
+      # La clave de firma se guarda en Settings > Secrets and variables > Actions
+      - name: Preparar clave de firma
+        env:
+          FIRMA_BASE64: ${{ secrets.FIRMA_BASE64 }}
+        run: |
+          if [ -z "$FIRMA_BASE64" ]; then
+            echo "::error::Falta el secreto FIRMA_BASE64 (clave de firma). Agrégalo en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "$FIRMA_BASE64" | base64 -d > "$RUNNER_TEMP/maestro-subida.jks"
+          echo "FIRMA_ARCHIVO=$RUNNER_TEMP/maestro-subida.jks" >> "$GITHUB_ENV"
+
       - name: Compilar
+        env:
+          FIRMA_CLAVE: ${{ secrets.FIRMA_CLAVE }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease --no-daemon
