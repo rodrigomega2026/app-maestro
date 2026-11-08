@@ -593,6 +593,52 @@ function cargar() {
 function guardar() { try { localStorage.setItem(K, JSON.stringify(S)); } catch (e) { toast("No se pudo guardar en el teléfono"); } }
 cargar();
 
+/* =====================================================================
+   SUSCRIPCIÓN (solo dentro de la app Android; la versión web es libre)
+   7 días gratis desde la primera vez que se abre; después, para crear
+   presupuestos nuevos se necesita la suscripción de Google Play.
+   ===================================================================== */
+const DIAS_PRUEBA = 7;
+const enApp = !!(window.Android && Android.suscribir);
+let SUB = {activo:false, listo:false, planes:[]};
+const KP = "maestro-prueba";            // fecha de inicio de la prueba (fuera del respaldo)
+let inicioPrueba = 0;
+try { inicioPrueba = +localStorage.getItem(KP) || 0; if (!inicioPrueba) { inicioPrueba = Date.now(); localStorage.setItem(KP, String(inicioPrueba)); } } catch (e) { inicioPrueba = Date.now(); }
+const diasPrueba = () => Math.max(0, DIAS_PRUEBA - Math.floor((Date.now() - inicioPrueba) / 864e5));
+const puedeCrear = () => !enApp || SUB.activo || diasPrueba() > 0;
+const periodoTxt = p => ({P1W:"semana", P1M:"mes", P3M:"3 meses", P6M:"6 meses", P1Y:"año"})[p] || p;
+const linkSuscripciones = "https://play.google.com/store/account/subscriptions?package=cl.maestro.presupuestos&sku=maestro_pro";
+if (enApp) { try { SUB = JSON.parse(Android.estadoSuscripcion()); } catch (e) {} }
+// Android avisa aquí cuando cambia la suscripción o llegan los precios
+window.onSuscripcion = txt => {
+  const antes = SUB.activo;
+  try { SUB = JSON.parse(txt); } catch (e) { return; }
+  if ($("#hoja.pago")) muroPago();
+  if (antes !== SUB.activo || vista === "inicio" || vista === "datos") pintar();
+  if (!antes && SUB.activo) cerrarHoja();
+};
+function muroPago() {
+  const terminada = diasPrueba() === 0;
+  const planes = [...(SUB.planes || [])].sort((a, b) => a.micros - b.micros);
+  const lista = planes.length
+    ? planes.map(pl => `<button class="cat" style="grid-template-columns:minmax(0,1fr) auto" onclick="Android.suscribir('${esc(pl.id)}')"><span><b>${pl.periodo === "P1Y" ? "Plan anual" : pl.periodo === "P1M" ? "Plan mensual" : "Plan"}</b><br><span class="small muted">Se renueva cada ${periodoTxt(pl.periodo)}</span></span><b class="num">${esc(pl.precio)}</b></button>`).join("")
+    : `<div class="vacio" style="padding:14px"><b>${SUB.listo ? "No se pudieron cargar los planes" : "Cargando planes…"}</b>Revisa tu conexión a internet e inténtalo de nuevo.</div>`;
+  hoja("Maestro Pro", `
+    <p style="margin:0 0 6px;font-size:1rem">${terminada ? "<b>Tu prueba gratis terminó.</b> " : ""}Suscríbete para seguir creando presupuestos sin límite.</p>
+    <ul class="small" style="margin:0 0 10px;padding-left:18px"><li>Presupuestos ilimitados con tu logo</li><li>Envío por WhatsApp y PDF</li><li>Precios de mano de obra y materiales Chile 2026</li></ul>
+    ${lista}
+    <p class="small muted" style="margin:10px 0 0">El pago se hace con tu cuenta de Google Play. La suscripción se renueva automáticamente al mismo precio hasta que la canceles. Puedes cancelar cuando quieras en Google Play › Pagos y suscripciones. Tus presupuestos guardados siguen disponibles aunque no te suscribas.</p>`,
+    `<button class="btn" onclick="cerrarHoja()">Ahora no</button>`);
+  $("#hoja").classList.add("pago");
+}
+function avisoSuscripcion() {
+  if (!enApp || SUB.activo) return "";
+  const d = diasPrueba();
+  return d > 0
+    ? `<div class="card" style="border-color:var(--yellow);background:#FFFBEA"><b>Prueba gratis: te ${d === 1 ? "queda 1 día" : "quedan " + d + " días"}</b><p class="small muted" style="margin:4px 0 10px">Después necesitarás Maestro Pro para crear presupuestos nuevos.</p><button class="btn y" onclick="muroPago()">Ver planes</button></div>`
+    : `<div class="card" style="border-color:var(--bad);background:var(--bad-soft)"><b>Tu prueba gratis terminó</b><p class="small muted" style="margin:4px 0 10px">Puedes ver y enviar tus presupuestos guardados. Para crear nuevos, suscríbete a Maestro Pro.</p><button class="btn y" onclick="muroPago()">Suscribirme</button></div>`;
+}
+
 // Tu precio (editado en el teléfono) manda; si no lo cambiaste, se usa el valor que viene en la app
 const todosMat = () => ({...MATERIALES, ...S.misMat});
 const existeMat = id => !!(MATERIALES[id] || S.misMat[id]);
@@ -686,6 +732,7 @@ function vInicio() {
   const sinDatos = !S.datos.nombre;
   $("#app").innerHTML = `
     <button class="preciosbtn" onclick="ir('precios')"><span class="e">💲</span><span><b>Precios de mano de obra y materiales</b><br><span class="small">${PARTIDAS.length} trabajos · ${Object.keys(MATERIALES).length} materiales · tócalo para revisarlos o cambiarlos</span></span><span class="fl">›</span></button>
+    ${avisoSuscripcion()}
     ${sinDatos ? `<div class="card" style="border-color:var(--yellow);background:#FFFBEA"><b>Primero, tus datos</b><p class="small muted" style="margin:4px 0 10px">Tu nombre y teléfono aparecerán en cada presupuesto que envíes.</p><button class="btn y" onclick="ir('datos')">Completar mis datos</button></div>` : ""}
     <div class="card">
       <h2>¿Qué trabajo vas a cotizar?</h2>
@@ -706,6 +753,7 @@ function vInicio() {
 const estadoTxt = e => ({borrador:"Borrador", enviado:"Enviado", aceptado:"Aceptado", rechazado:"Rechazado"})[e] || "Borrador";
 
 function crear(items, titulo) {
+  if (!puedeCrear()) { muroPago(); return; }
   S.contador++;
   const p = {id: Date.now().toString(36), num: S.contador, fecha: hoy(), mod: Date.now(), titulo: titulo || "", estado:"borrador",
     cliente:{nombre:"", tel:"", dir:""}, items, imprevistos:10, descuento:0, incluirMat:true, notas:""};
@@ -714,6 +762,7 @@ function crear(items, titulo) {
 
 /* ---------- PLANTILLAS ---------- */
 function pedirPlantilla(id) {
+  if (!puedeCrear()) { muroPago(); return; }
   const pl = PLANTILLAS.find(x => x.id === id);
   hoja(`${pl.e} ${pl.n}`, `
     <p class="small muted" style="margin:0">Ingresa las medidas. Después puedes cambiar cualquier cantidad.</p>
@@ -909,6 +958,7 @@ function borrarPres() {
     vista = "inicio"; history.replaceState({v:"inicio"}, ""); pintar(); scrollTo(0, 0); toast("Presupuesto eliminado"); });
 }
 function duplicarPres() {
+  if (!puedeCrear()) { muroPago(); return; }
   const o = presActual(); S.contador++;
   const c = JSON.parse(JSON.stringify(o)); c.id = Date.now().toString(36); c.num = S.contador; c.fecha = hoy(); c.mod = Date.now(); c.estado = "borrador"; c.titulo = (o.titulo || "Presupuesto") + " (copia)";
   S.pres.push(c); guardar(); ir("pres", c.id); toast("Presupuesto duplicado");
@@ -1123,6 +1173,11 @@ function vDatos() {
           <span class="small muted">Se muestra arriba en tus presupuestos y en el PDF. En cada presupuesto puedes ocultarlo.</span>
         </div></div>
     </div>
+    ${enApp ? `<div class="card"><h2>Suscripción</h2>
+      ${SUB.activo
+        ? `<p class="small" style="margin:0 0 10px"><b>Maestro Pro activo ✓</b></p><button class="btn sm" onclick="abrirLink(linkSuscripciones)">Administrar o cancelar</button>`
+        : `<p class="small muted" style="margin:0 0 10px">${diasPrueba() > 0 ? "Prueba gratis: quedan " + diasPrueba() + " día(s)." : "Tu prueba gratis terminó."}</p><button class="btn sm y" onclick="muroPago()">Ver planes</button>`}
+    </div>` : ""}
     <div class="card"><h2>Respaldo</h2>
       <p class="small muted" style="margin:0 0 10px">Tus presupuestos se guardan solo en este teléfono. Envía una copia de respaldo a tu correo o WhatsApp de vez en cuando.</p>
       <div class="row"><button class="btn sm" onclick="respaldar()">Enviar copia de respaldo</button><button class="btn sm" onclick="restaurarRespaldo()">Restaurar desde copia</button></div>
